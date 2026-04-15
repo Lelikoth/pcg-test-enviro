@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://4pqeackn40q7"
+
+[deps]
+
+files=["res://output/csv/PerlinNoise_results.seed.translation", "res://output/csv/PerlinNoise_results.generation.translation", "res://output/csv/PerlinNoise_results.is.translation", "res://output/csv/PerlinNoise_results.path.translation", "res://output/csv/PerlinNoise_results.floor.translation", "res://output/csv/PerlinNoise_results.wall.translation", "res://output/csv/PerlinNoise_results.floor.translation", "res://output/csv/PerlinNoise_results.room.translation", "res://output/csv/PerlinNoise_results.largest.translation", "res://output/csv/PerlinNoise_results.run.translation", "res://output/csv/PerlinNoise_results.used.translation", "res://output/csv/PerlinNoise_results.png.translation"]
+
+source_file="res://output/csv/PerlinNoise_results.csv"
+dest_files=["res://output/csv/PerlinNoise_results.seed.translation", "res://output/csv/PerlinNoise_results.generation.translation", "res://output/csv/PerlinNoise_results.is.translation", "res://output/csv/PerlinNoise_results.path.translation", "res://output/csv/PerlinNoise_results.floor.translation", "res://output/csv/PerlinNoise_results.wall.translation", "res://output/csv/PerlinNoise_results.floor.translation", "res://output/csv/PerlinNoise_results.room.translation", "res://output/csv/PerlinNoise_results.largest.translation", "res://output/csv/PerlinNoise_results.run.translation", "res://output/csv/PerlinNoise_results.used.translation", "res://output/csv/PerlinNoise_results.png.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

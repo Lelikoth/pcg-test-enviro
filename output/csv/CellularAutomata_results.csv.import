@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c2p3ns8e481j8"
+
+[deps]
+
+files=["res://output/csv/CellularAutomata_results.seed.translation", "res://output/csv/CellularAutomata_results.generation.translation", "res://output/csv/CellularAutomata_results.is.translation", "res://output/csv/CellularAutomata_results.path.translation", "res://output/csv/CellularAutomata_results.floor.translation", "res://output/csv/CellularAutomata_results.wall.translation", "res://output/csv/CellularAutomata_results.floor.translation", "res://output/csv/CellularAutomata_results.room.translation", "res://output/csv/CellularAutomata_results.largest.translation", "res://output/csv/CellularAutomata_results.used.translation", "res://output/csv/CellularAutomata_results.keep.translation", "res://output/csv/CellularAutomata_results.run.translation", "res://output/csv/CellularAutomata_results.png.translation"]
+
+source_file="res://output/csv/CellularAutomata_results.csv"
+dest_files=["res://output/csv/CellularAutomata_results.seed.translation", "res://output/csv/CellularAutomata_results.generation.translation", "res://output/csv/CellularAutomata_results.is.translation", "res://output/csv/CellularAutomata_results.path.translation", "res://output/csv/CellularAutomata_results.floor.translation", "res://output/csv/CellularAutomata_results.wall.translation", "res://output/csv/CellularAutomata_results.floor.translation", "res://output/csv/CellularAutomata_results.room.translation", "res://output/csv/CellularAutomata_results.largest.translation", "res://output/csv/CellularAutomata_results.used.translation", "res://output/csv/CellularAutomata_results.keep.translation", "res://output/csv/CellularAutomata_results.run.translation", "res://output/csv/CellularAutomata_results.png.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

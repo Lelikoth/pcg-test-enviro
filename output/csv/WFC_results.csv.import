@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://6gica05lf3ms"
+
+[deps]
+
+files=["res://output/csv/WFC_results.seed.translation", "res://output/csv/WFC_results.generation.translation", "res://output/csv/WFC_results.is.translation", "res://output/csv/WFC_results.path.translation", "res://output/csv/WFC_results.floor.translation", "res://output/csv/WFC_results.wall.translation", "res://output/csv/WFC_results.floor.translation", "res://output/csv/WFC_results.room.translation", "res://output/csv/WFC_results.largest.translation", "res://output/csv/WFC_results.used.translation", "res://output/csv/WFC_results.keep.translation", "res://output/csv/WFC_results.run.translation", "res://output/csv/WFC_results.png.translation"]
+
+source_file="res://output/csv/WFC_results.csv"
+dest_files=["res://output/csv/WFC_results.seed.translation", "res://output/csv/WFC_results.generation.translation", "res://output/csv/WFC_results.is.translation", "res://output/csv/WFC_results.path.translation", "res://output/csv/WFC_results.floor.translation", "res://output/csv/WFC_results.wall.translation", "res://output/csv/WFC_results.floor.translation", "res://output/csv/WFC_results.room.translation", "res://output/csv/WFC_results.largest.translation", "res://output/csv/WFC_results.used.translation", "res://output/csv/WFC_results.keep.translation", "res://output/csv/WFC_results.run.translation", "res://output/csv/WFC_results.png.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true
