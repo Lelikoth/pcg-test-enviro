@@ -1,74 +1,242 @@
 extends RefCounted
 class_name MetricsCalculator
 
-var room_detector := RoomDetector.new()
+
+var graph_metrics := GraphMetrics.new()
+var entropy_metrics := EntropyMetrics.new()
+var region_metrics := RegionMetrics.new()
+var shape_metrics := ShapeMetrics.new()
+
 
 func calculate_metrics(map_data: Dictionary, generation_time_ms: float, validator: MapValidator) -> Dictionary:
 	var grid: Array = map_data["grid"]
-	var start: Vector2i = map_data["start"]
-	var end: Vector2i = map_data["end"]
+
+	var width: int = _get_width(grid)
+	var height: int = _get_height(grid)
+	var total_cells: int = width * height
+
+	var start: Vector2i = map_data.get("start", Vector2i.ZERO)
+	var end: Vector2i = map_data.get("end", Vector2i.ZERO)
+
+	var has_valid_start: bool = validator.is_walkable(grid, start)
+	var has_valid_end: bool = validator.is_walkable(grid, end)
 
 	var floor_count: int = 0
 	var wall_count: int = 0
 
-	for row in grid:
-		for cell in row:
+	for row_value in grid:
+		var row: Array = row_value
+
+		for cell_value in row:
+			var cell: int = int(cell_value)
+
 			if cell == MapTypes.FLOOR:
 				floor_count += 1
 			else:
 				wall_count += 1
 
-	var total: int = floor_count + wall_count
 	var path_length: int = validator.find_path_length(grid, start, end)
-	var connected: bool = path_length != -1
+	var is_connected: bool = path_length != -1
 
-	var rooms_for_metrics: Array = _get_rooms_for_metrics(map_data, grid)
+	var declared_room_data: Dictionary = _calculate_declared_room_metrics(map_data)
+	var module_data: Dictionary = _calculate_module_metrics(map_data)
 
-	return {
+	var graph_data: Dictionary = graph_metrics.calculate(grid, start, end, validator)
+	var entropy_data: Dictionary = entropy_metrics.calculate(grid)
+	var region_data: Dictionary = region_metrics.calculate(grid, start)
+	var shape_data: Dictionary = shape_metrics.calculate(grid)
+
+	var metrics := {
 		"algorithm": map_data.get("algorithm", "UNKNOWN"),
 		"seed": map_data.get("seed", 0),
+
+		"map_width": width,
+		"map_height": height,
+		"total_cells": total_cells,
+
 		"generation_time_ms": generation_time_ms,
-		"is_connected": connected,
+		"time_per_cell_ms": _safe_divide(generation_time_ms, float(max(1, total_cells))),
+		"time_per_floor_cell_ms": _safe_divide(generation_time_ms, float(max(1, floor_count))),
+
+		"generation_success": not bool(map_data.get("failed_generation", false)),
+		"retry_count": map_data.get("retry_count", 0),
+
+		"start_x": start.x,
+		"start_y": start.y,
+		"end_x": end.x,
+		"end_y": end.y,
+
+		"has_valid_start": has_valid_start,
+		"has_valid_end": has_valid_end,
+
+		"is_connected": is_connected,
 		"path_length": path_length,
+
 		"floor_count": floor_count,
 		"wall_count": wall_count,
-		"floor_ratio": float(floor_count) / max(1.0, float(total)),
-		"room_count": rooms_for_metrics.size(),
-		"largest_room_area": _largest_room_area(rooms_for_metrics)
+		"floor_ratio": _safe_divide(float(floor_count), float(max(1, total_cells))),
+		"wall_ratio": _safe_divide(float(wall_count), float(max(1, total_cells)))
 	}
 
-func _get_rooms_for_metrics(map_data: Dictionary, grid: Array) -> Array:
+	for key in declared_room_data.keys():
+		metrics[key] = declared_room_data[key]
+
+	for key in module_data.keys():
+		metrics[key] = module_data[key]
+
+	for key in graph_data.keys():
+		metrics[key] = graph_data[key]
+
+	for key in entropy_data.keys():
+		metrics[key] = entropy_data[key]
+
+	for key in region_data.keys():
+		metrics[key] = region_data[key]
+
+	for key in shape_data.keys():
+		metrics[key] = shape_data[key]
+
+	metrics["floor_ratio_in_target_range"] = (
+		metrics["floor_ratio"] >= 0.25
+		and metrics["floor_ratio"] <= 0.65
+	)
+
+	return metrics
+
+
+func _calculate_declared_room_metrics(map_data: Dictionary) -> Dictionary:
 	var generator_rooms: Array = map_data.get("rooms", [])
+	var normalized_rooms: Array = _normalize_generator_rooms(generator_rooms)
 
-	if generator_rooms.size() > 0:
-		return _normalize_generator_rooms(generator_rooms)
+	return {
+		"declared_room_count": normalized_rooms.size(),
+		"largest_declared_room_area": _largest_room_area(normalized_rooms)
+	}
 
-	return room_detector.detect_rooms(grid)
+
+func _calculate_module_metrics(map_data: Dictionary) -> Dictionary:
+	if not map_data.has("module_cells"):
+		return {
+			"room_module_count": 0,
+			"corridor_module_count": 0,
+			"junction_module_count": 0,
+			"special_module_count": 0,
+			"small_room_count": 0,
+			"medium_room_count": 0,
+			"large_room_count": 0
+		}
+
+	var module_cells: Array = map_data["module_cells"]
+
+	var room_module_count: int = 0
+	var corridor_module_count: int = 0
+	var junction_module_count: int = 0
+	var special_module_count: int = 0
+
+	var small_room_count: int = 0
+	var medium_room_count: int = 0
+	var large_room_count: int = 0
+
+	for row_value in module_cells:
+		var row: Array = row_value
+
+		for cell_value in row:
+			var cell: Dictionary = cell_value
+			var options: Array = cell.get("options", [])
+
+			if options.size() != 1:
+				continue
+
+			var module: Dictionary = options[0]
+			var tags: Array = module.get("tags", [])
+			var scale_class: String = str(module.get("scale_class", ""))
+
+			if tags.has("room"):
+				room_module_count += 1
+
+				match scale_class:
+					"small":
+						small_room_count += 1
+					"medium":
+						medium_room_count += 1
+					"large":
+						large_room_count += 1
+
+			if tags.has("corridor"):
+				corridor_module_count += 1
+
+			if tags.has("junction"):
+				junction_module_count += 1
+
+			if tags.has("special"):
+				special_module_count += 1
+
+	return {
+		"room_module_count": room_module_count,
+		"corridor_module_count": corridor_module_count,
+		"junction_module_count": junction_module_count,
+		"special_module_count": special_module_count,
+		"small_room_count": small_room_count,
+		"medium_room_count": medium_room_count,
+		"large_room_count": large_room_count
+	}
+
 
 func _normalize_generator_rooms(generator_rooms: Array) -> Array:
 	var normalized: Array = []
 
-	for room in generator_rooms:
-		if room is Dictionary:
-			if room.has("area"):
-				normalized.append(room)
-			elif room.has("size"):
-				var size: Vector2i = room["size"]
-				var area: int = size.x * size.y
+	for room_value in generator_rooms:
+		if not room_value is Dictionary:
+			continue
 
-				var normalized_room: Dictionary = room.duplicate()
-				normalized_room["area"] = area
-				normalized.append(normalized_room)
+		var room: Dictionary = room_value
+
+		if room.has("area"):
+			normalized.append(room)
+		elif room.has("size"):
+			var size: Vector2i = room["size"]
+			var area: int = size.x * size.y
+
+			var normalized_room: Dictionary = room.duplicate()
+			normalized_room["area"] = area
+			normalized.append(normalized_room)
 
 	return normalized
+
 
 func _largest_room_area(rooms: Array) -> int:
 	var best: int = 0
 
-	for room in rooms:
-		if room is Dictionary and room.has("area"):
-			var area: int = room["area"]
-			if area > best:
-				best = area
+	for room_value in rooms:
+		if not room_value is Dictionary:
+			continue
+
+		var room: Dictionary = room_value
+
+		if not room.has("area"):
+			continue
+
+		var area: int = int(room["area"])
+
+		if area > best:
+			best = area
 
 	return best
+
+
+func _get_width(grid: Array) -> int:
+	if grid.is_empty():
+		return 0
+
+	return grid[0].size()
+
+
+func _get_height(grid: Array) -> int:
+	return grid.size()
+
+
+func _safe_divide(a: float, b: float) -> float:
+	if b == 0.0:
+		return 0.0
+
+	return a / b

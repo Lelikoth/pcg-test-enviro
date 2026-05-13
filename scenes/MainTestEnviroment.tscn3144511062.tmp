@@ -146,62 +146,11 @@ value = 12.0
 
 [node name="Label9" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=870277107]
 layout_mode = 2
-text = "ProcGen Automaton Iterations"
+text = "ProcGen Automation Iterations"
 
 [node name="ProcGenIterationsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=438187163]
 layout_mode = 2
 max_value = 10.0
-
-[node name="Label14" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=2137809957]
-layout_mode = 2
-text = "ProcGen Automaton Noise Rate "
-
-[node name="ProcGenAutomatonNoiseRateSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=2061068034]
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-
-[node name="Label10" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=833821180]
-layout_mode = 2
-text = "ProcGen Minimum Room Coverage
-"
-
-[node name="ProcGenRoomMinCoverageSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=567595365]
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-value = 0.3
-
-[node name="Label11" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1085284869]
-layout_mode = 2
-text = "ProcGen Maximum Room Coverage
-"
-
-[node name="ProcGenRoomMaxCoverageSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1859428645]
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-value = 0.55
-
-[node name="Label12" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=666826235]
-layout_mode = 2
-text = "ProcGen Room Center Ratio"
-
-[node name="ProcGenRoomCenterRatioSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1191701953]
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-value = 0.85
-
-[node name="Label13" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=200515184]
-layout_mode = 2
-text = "ProcGen Corridor Cycle Ratio"
-
-[node name="ProcGenCorridorCycleChanceSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1294722391]
-layout_mode = 2
-max_value = 1.0
-step = 0.01
-value = 0.08
 
 [node name="NoiseSectionRoot" type="VBoxContainer" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox" unique_id=1607537390]
 layout_mode = 2
@@ -260,7 +209,7 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=700000881]
 layout_mode = 2
-text = "Fill Probability"
+text = "Cellular Automata Fill Probability"
 
 [node name="CAFillProbabilitySpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=1491524718]
 layout_mode = 2
@@ -270,7 +219,8 @@ value = 0.45
 
 [node name="Label2" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=531958441]
 layout_mode = 2
-text = "Smoothing Iterations"
+text = "Cellular Automata Iterations
+"
 
 [node name="CAIterationsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=794810904]
 layout_mode = 2
@@ -279,85 +229,21 @@ value = 5.0
 
 [node name="Label3" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=1978363192]
 layout_mode = 2
-text = "Border Width"
+text = "Cellular Automata Birth Limit"
 
-[node name="CABorderWidthSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=1715630461]
+[node name="CABirthLimitSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=1715630461]
 layout_mode = 2
-max_value = 10.0
-value = 1.0
-
-[node name="ModuleWFCSectionRoot" type="VBoxContainer" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox" unique_id=2004844764]
-layout_mode = 2
-script = ExtResource("3_eoh6s")
-expanded = false
-header_text = "Module Wave Function Collapse"
-
-[node name="HeaderButton" type="Button" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot" unique_id=316251585]
-layout_mode = 2
-
-[node name="ContentContainer" type="VBoxContainer" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot" unique_id=1463269458]
-layout_mode = 2
-
-[node name="Label" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=298431282]
-layout_mode = 2
-text = "WFC Module Grid Width"
-
-[node name="WFCModuleGridWidthSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1582464159]
-layout_mode = 2
-min_value = 4.0
-max_value = 32.0
-value = 8.0
-rounded = true
-
-[node name="Label2" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1693168968]
-layout_mode = 2
-text = "WFC Module Grid Height"
-
-[node name="WFCModuleGridHeightSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=42027975]
-layout_mode = 2
-min_value = 4.0
-max_value = 32.0
-value = 8.0
-rounded = true
-
-[node name="Label3" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=153529701]
-layout_mode = 2
-text = "WFC Max Retries"
-
-[node name="WFCMaxRetriesSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1539703098]
-layout_mode = 2
-min_value = 1.0
-value = 20.0
-rounded = true
-
-[node name="Label4" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1510097387]
-layout_mode = 2
-text = "WFC Min Small Corridors"
-
-[node name="WFCMinSmallCorridorsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1185195444]
-layout_mode = 2
-max_value = 50.0
+max_value = 8.0
 value = 4.0
-rounded = true
 
-[node name="Label5" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1373080343]
+[node name="Label4" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=1032957652]
 layout_mode = 2
-text = "WFC Min Medium Rooms"
+text = "Cellular Automata Death Limit"
 
-[node name="WFCMinMediumRoomsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=580791675]
+[node name="CADeathLimitSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=1467537137]
 layout_mode = 2
-max_value = 50.0
-value = 2.0
-rounded = true
-
-[node name="Label6" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1327770402]
-layout_mode = 2
-text = "WFC Min Large Rooms"
-
-[node name="WFCMinLargeRoomsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=811402295]
-layout_mode = 2
-max_value = 50.0
-value = 1.0
+max_value = 8.0
+value = 3.0
 
 [node name="FixedStartEndCheck" type="CheckBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox" unique_id=612096543]
 layout_mode = 2

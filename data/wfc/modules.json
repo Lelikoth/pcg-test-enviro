@@ -1,0 +1,259 @@
+{
+  "modules": [
+	{
+	  "id": "straight_h",
+	  "name": "Straight Horizontal",
+	  "grid": [
+		[1, 1, 1],
+		[0, 0, 0],
+		[1, 1, 1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": true,
+	  "weight": 6.0,
+	  "tags": ["corridor"]
+	},
+	{
+	  "id": "straight_v",
+	  "name": "Straight Vertical",
+	  "grid": [
+		[1, 0, 1],
+		[1, 0, 1],
+		[1, 0, 1]
+	  ],
+	  "up": true,
+	  "right": false,
+	  "down": true,
+	  "left": false,
+	  "weight": 6.0,
+	  "tags": ["corridor"]
+	},
+	{
+	  "id": "corner_ur",
+	  "name": "Corner Up Right",
+	  "grid": [
+		[1, 0, 1],
+		[1, 0, 0],
+		[1, 1, 1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 5.0,
+	  "tags": ["corridor", "corner"]
+	},
+	{
+	  "id": "corner_rd",
+	  "name": "Corner Right Down",
+	  "grid": [
+		[1, 1, 1],
+		[1, 0, 0],
+		[1, 0, 1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": true,
+	  "left": false,
+	  "weight": 5.0,
+	  "tags": ["corridor", "corner"]
+	},
+	{
+	  "id": "corner_dl",
+	  "name": "Corner Down Left",
+	  "grid": [
+		[1, 1, 1],
+		[0, 0, 1],
+		[1, 0, 1]
+	  ],
+	  "up": false,
+	  "right": false,
+	  "down": true,
+	  "left": true,
+	  "weight": 5.0,
+	  "tags": ["corridor", "corner"]
+	},
+	{
+	  "id": "corner_lu",
+	  "name": "Corner Left Up",
+	  "grid": [
+		[1, 0, 1],
+		[0, 0, 1],
+		[1, 1, 1]
+	  ],
+	  "up": true,
+	  "right": false,
+	  "down": false,
+	  "left": true,
+	  "weight": 5.0,
+	  "tags": ["corridor", "corner"]
+	},
+	{
+	  "id": "tee_up",
+	  "name": "Tee Up",
+	  "grid": [
+		[1, 0, 1],
+		[0, 0, 0],
+		[1, 1, 1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": false,
+	  "left": true,
+	  "weight": 3.0,
+	  "tags": ["junction", "tee"]
+	},
+	{
+	  "id": "tee_right",
+	  "name": "Tee Right",
+	  "grid": [
+		[1, 0, 1],
+		[1, 0, 0],
+		[1, 0, 1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": true,
+	  "left": false,
+	  "weight": 3.0,
+	  "tags": ["junction", "tee"]
+	},
+	{
+	  "id": "tee_down",
+	  "name": "Tee Down",
+	  "grid": [
+		[1, 1, 1],
+		[0, 0, 0],
+		[1, 0, 1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": true,
+	  "left": true,
+	  "weight": 3.0,
+	  "tags": ["junction", "tee"]
+	},
+	{
+	  "id": "tee_left",
+	  "name": "Tee Left",
+	  "grid": [
+		[1, 0, 1],
+		[0, 0, 1],
+		[1, 0, 1]
+	  ],
+	  "up": true,
+	  "right": false,
+	  "down": true,
+	  "left": true,
+	  "weight": 3.0,
+	  "tags": ["junction", "tee"]
+	},
+	{
+	  "id": "cross",
+	  "name": "Cross",
+	  "grid": [
+		[1, 0, 1],
+		[0, 0, 0],
+		[1, 0, 1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": true,
+	  "left": true,
+	  "weight": 1.5,
+	  "tags": ["junction", "cross"]
+	},
+	{
+	  "id": "dead_end_up",
+	  "name": "Dead End Up",
+	  "grid": [
+		[1, 0, 1],
+		[1, 0, 1],
+		[1, 1, 1]
+	  ],
+	  "up": true,
+	  "right": false,
+	  "down": false,
+	  "left": false,
+	  "weight": 2.0,
+	  "tags": ["dead_end"]
+	},
+	{
+	  "id": "dead_end_right",
+	  "name": "Dead End Right",
+	  "grid": [
+		[1, 1, 1],
+		[1, 0, 0],
+		[1, 1, 1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 2.0,
+	  "tags": ["dead_end"]
+	},
+	{
+	  "id": "dead_end_down",
+	  "name": "Dead End Down",
+	  "grid": [
+		[1, 1, 1],
+		[1, 0, 1],
+		[1, 0, 1]
+	  ],
+	  "up": false,
+	  "right": false,
+	  "down": true,
+	  "left": false,
+	  "weight": 2.0,
+	  "tags": ["dead_end"]
+	},
+	{
+	  "id": "dead_end_left",
+	  "name": "Dead End Left",
+	  "grid": [
+		[1, 1, 1],
+		[0, 0, 1],
+		[1, 1, 1]
+	  ],
+	  "up": false,
+	  "right": false,
+	  "down": false,
+	  "left": true,
+	  "weight": 2.0,
+	  "tags": ["dead_end"]
+	},
+	{
+	  "id": "start_room",
+	  "name": "Start Room",
+	  "grid": [
+		[1, 1, 1],
+		[1, 0, 0],
+		[1, 1, 1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 1.0,
+	  "tags": ["special", "start", "room"]
+	},
+	{
+	  "id": "end_room",
+	  "name": "End Room",
+	  "grid": [
+		[1, 1, 1],
+		[0, 0, 1],
+		[1, 1, 1]
+	  ],
+	  "up": false,
+	  "right": false,
+	  "down": false,
+	  "left": true,
+	  "weight": 1.0,
+	  "tags": ["special", "end", "room"]
+	}
+  ]
+}

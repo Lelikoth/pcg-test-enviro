@@ -1,0 +1,460 @@
+{
+  "module_size": 7,
+  "modules": [
+	{
+	  "id": "straight_h",
+	  "name": "Straight Horizontal",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[0,0,0,0,0,0,0],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": true,
+	  "weight": 5.5,
+	  "tags": ["corridor"],
+	  "scale_class": "small"
+	},
+	{
+	  "id": "straight_v",
+	  "name": "Straight Vertical",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": true,
+	  "right": false,
+	  "down": true,
+	  "left": false,
+	  "weight": 5.5,
+	  "tags": ["corridor"],
+	  "scale_class": "small"
+	},
+
+	{
+	  "id": "corner_ur",
+	  "name": "Corner Up Right",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,0,0,1],
+		[1,1,1,0,0,0,0],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 4.5,
+	  "tags": ["corridor", "corner"],
+	  "scale_class": "small"
+	},
+	{
+	  "id": "corner_rd",
+	  "name": "Corner Right Down",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,0,0,0,1],
+		[1,1,1,0,0,0,0],
+		[1,1,1,0,0,0,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": true,
+	  "left": false,
+	  "weight": 4.5,
+	  "tags": ["corridor", "corner"],
+	  "scale_class": "small"
+	},
+	{
+	  "id": "corner_dl",
+	  "name": "Corner Down Left",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,0,0,0,1,1,1],
+		[0,0,0,0,1,1,1],
+		[1,0,0,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": false,
+	  "right": false,
+	  "down": true,
+	  "left": true,
+	  "weight": 4.5,
+	  "tags": ["corridor", "corner"],
+	  "scale_class": "small"
+	},
+	{
+	  "id": "corner_lu",
+	  "name": "Corner Left Up",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,0,0,0,1,1,1],
+		[0,0,0,0,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": true,
+	  "right": false,
+	  "down": false,
+	  "left": true,
+	  "weight": 4.5,
+	  "tags": ["corridor", "corner"],
+	  "scale_class": "small"
+	},
+
+	{
+	  "id": "tee_up",
+	  "name": "Tee Up",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[0,0,0,0,0,0,0],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": false,
+	  "left": true,
+	  "weight": 2.8,
+	  "tags": ["junction", "tee"],
+	  "scale_class": "small"
+	},
+	{
+	  "id": "tee_right",
+	  "name": "Tee Right",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,0,0,1],
+		[1,1,1,0,0,0,0],
+		[1,1,1,0,0,0,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": true,
+	  "left": false,
+	  "weight": 2.8,
+	  "tags": ["junction", "tee"],
+	  "scale_class": "small"
+	},
+	{
+	  "id": "tee_down",
+	  "name": "Tee Down",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[0,0,0,0,0,0,0],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": true,
+	  "left": true,
+	  "weight": 2.8,
+	  "tags": ["junction", "tee"],
+	  "scale_class": "small"
+	},
+	{
+	  "id": "tee_left",
+	  "name": "Tee Left",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,0,0,0,1,1,1],
+		[0,0,0,0,1,1,1],
+		[1,0,0,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": true,
+	  "right": false,
+	  "down": true,
+	  "left": true,
+	  "weight": 2.8,
+	  "tags": ["junction", "tee"],
+	  "scale_class": "small"
+	},
+	{
+	  "id": "cross",
+	  "name": "Cross",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[0,0,0,0,0,0,0],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": true,
+	  "left": true,
+	  "weight": 1.3,
+	  "tags": ["junction", "cross"],
+	  "scale_class": "small"
+	},
+
+	{
+	  "id": "room_3x3_single_right",
+	  "name": "Room 3x3 Single Right",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,0,0],
+		[1,1,0,0,0,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 1.5,
+	  "tags": ["room", "room_small"],
+	  "scale_class": "small",
+	  "room_shape": "3x3"
+	},
+	{
+	  "id": "room_3x4_single_right",
+	  "name": "Room 3x4 Single Right",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,0,0,0,0,1],
+		[1,1,0,0,0,0,1],
+		[1,1,0,0,0,0,0],
+		[1,1,0,0,0,0,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 1.9,
+	  "tags": ["room", "room_medium"],
+	  "scale_class": "medium",
+	  "room_shape": "3x4"
+	},
+	{
+	  "id": "room_4x4_single_right",
+	  "name": "Room 4x4 Single Right",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,0,0,0,0,1,1],
+		[1,0,0,0,0,1,1],
+		[1,0,0,0,0,0,0],
+		[1,0,0,0,0,1,1],
+		[1,0,0,0,0,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 2.3,
+	  "tags": ["room", "room_medium"],
+	  "scale_class": "medium",
+	  "room_shape": "4x4"
+	},
+	{
+	  "id": "room_5x4_single_right",
+	  "name": "Room 5x4 Single Right",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,0,0,0,0,0,1],
+		[1,0,0,0,0,0,1],
+		[1,0,0,0,0,0,0],
+		[1,0,0,0,0,0,1],
+		[1,0,0,0,0,0,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 2.8,
+	  "tags": ["room", "room_large"],
+	  "scale_class": "large",
+	  "room_shape": "5x4"
+	},
+	{
+	  "id": "room_3x5_pass_h",
+	  "name": "Room 3x5 Pass Horizontal",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1],
+		[0,0,0,0,0,0,0],
+		[0,0,0,0,0,0,0],
+		[0,0,0,0,0,0,0],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": true,
+	  "weight": 2.0,
+	  "tags": ["room", "room_medium"],
+	  "scale_class": "medium",
+	  "room_shape": "3x5"
+	},
+	{
+	  "id": "room_5x3_pass_v",
+	  "name": "Room 5x3 Pass Vertical",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": true,
+	  "right": false,
+	  "down": true,
+	  "left": false,
+	  "weight": 2.0,
+	  "tags": ["room", "room_medium"],
+	  "scale_class": "medium",
+	  "room_shape": "5x3"
+	},
+	{
+	  "id": "room_5x5_cross",
+	  "name": "Room 5x5 Cross",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,0,0,0,0,0,1],
+		[1,0,0,0,0,0,1],
+		[0,0,0,0,0,0,0],
+		[1,0,0,0,0,0,1],
+		[1,0,0,0,0,0,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": true,
+	  "left": true,
+	  "weight": 2.6,
+	  "tags": ["room", "room_large", "hub"],
+	  "scale_class": "large",
+	  "room_shape": "5x5"
+	},
+	{
+	  "id": "room_pillars_cross",
+	  "name": "Room Pillars Cross",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,0,0,0,0,0,1],
+		[1,0,1,0,1,0,1],
+		[0,0,0,0,0,0,0],
+		[1,0,1,0,1,0,1],
+		[1,0,0,0,0,0,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": true,
+	  "left": true,
+	  "weight": 2.1,
+	  "tags": ["room", "pillars", "hub"],
+	  "scale_class": "large",
+	  "room_shape": "5x5"
+	},
+	{
+	  "id": "room_open_hall",
+	  "name": "Room Open Hall",
+	  "grid": [
+		[1,1,1,0,1,1,1],
+		[1,0,0,0,0,0,1],
+		[1,0,0,0,0,0,1],
+		[0,0,0,0,0,0,0],
+		[1,0,0,0,0,0,1],
+		[1,0,0,0,0,0,1],
+		[1,1,1,0,1,1,1]
+	  ],
+	  "up": true,
+	  "right": true,
+	  "down": true,
+	  "left": true,
+	  "weight": 2.4,
+	  "tags": ["room", "hall"],
+	  "scale_class": "large",
+	  "room_shape": "5x5"
+	},
+
+	{
+	  "id": "start_room",
+	  "name": "Start Room",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,0,0],
+		[1,1,0,0,0,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": false,
+	  "right": true,
+	  "down": false,
+	  "left": false,
+	  "weight": 1.0,
+	  "tags": ["special", "start", "room"],
+	  "scale_class": "small",
+	  "room_shape": "3x3"
+	},
+	{
+	  "id": "end_room",
+	  "name": "End Room",
+	  "grid": [
+		[1,1,1,1,1,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,0,0,0,1,1],
+		[0,0,0,0,0,1,1],
+		[1,1,0,0,0,1,1],
+		[1,1,1,1,1,1,1],
+		[1,1,1,1,1,1,1]
+	  ],
+	  "up": false,
+	  "right": false,
+	  "down": false,
+	  "left": true,
+	  "weight": 1.0,
+	  "tags": ["special", "end", "room"],
+	  "scale_class": "small",
+	  "room_shape": "3x3"
+	}
+  ]
+}
