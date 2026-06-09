@@ -276,6 +276,9 @@ func _format_metrics(metrics: Dictionary) -> String:
 	lines.append("Generation success: %s" % str(metrics.get("generation_success", "")))
 	lines.append("Retry count: %s" % str(metrics.get("retry_count", "")))
 
+	if metrics.has("fallback_reason"):
+		lines.append("Fallback reason: %s" % str(metrics.get("fallback_reason", "")))
+
 	lines.append("")
 	lines.append("[b]Tiles[/b]")
 	lines.append("Floor count: %s" % str(metrics.get("floor_count", "")))
@@ -285,7 +288,7 @@ func _format_metrics(metrics: Dictionary) -> String:
 	lines.append("Floor ratio in target range: %s" % str(metrics.get("floor_ratio_in_target_range", "")))
 
 	lines.append("")
-	lines.append("[b]Start / End[/b]")
+	lines.append("[b]Start / End / Path[/b]")
 	lines.append("Start: (%s, %s)" % [
 		str(metrics.get("start_x", "")),
 		str(metrics.get("start_y", ""))
@@ -319,41 +322,6 @@ func _format_metrics(metrics: Dictionary) -> String:
 	lines.append("Unreachable floor ratio: %s" % str(metrics.get("unreachable_floor_ratio", "")))
 
 	lines.append("")
-	lines.append("[b]Grid Graph Topology[/b]")
-	lines.append("Graph nodes: %s" % str(metrics.get("graph_node_count", "")))
-	lines.append("Graph edges: %s" % str(metrics.get("graph_edge_count", "")))
-	lines.append("Average degree: %s" % str(metrics.get("average_degree", "")))
-	lines.append("Dead ends: %s" % str(metrics.get("dead_end_count", "")))
-	lines.append("Dead end ratio: %s" % str(metrics.get("dead_end_ratio", "")))
-	lines.append("Junctions: %s" % str(metrics.get("junction_count", "")))
-	lines.append("Junction ratio: %s" % str(metrics.get("junction_ratio", "")))
-	lines.append("Grid cycle count: %s" % str(metrics.get("cycle_count_grid", "")))
-	lines.append("Grid cycle density: %s" % str(metrics.get("cycle_density_grid", "")))
-
-	lines.append("")
-	lines.append("[b]Degree Distribution[/b]")
-	lines.append("Degree 0 count / ratio: %s / %s" % [
-		str(metrics.get("degree_0_count", "")),
-		str(metrics.get("degree_0_ratio", ""))
-	])
-	lines.append("Degree 1 count / ratio: %s / %s" % [
-		str(metrics.get("degree_1_count", "")),
-		str(metrics.get("degree_1_ratio", ""))
-	])
-	lines.append("Degree 2 count / ratio: %s / %s" % [
-		str(metrics.get("degree_2_count", "")),
-		str(metrics.get("degree_2_ratio", ""))
-	])
-	lines.append("Degree 3 count / ratio: %s / %s" % [
-		str(metrics.get("degree_3_count", "")),
-		str(metrics.get("degree_3_ratio", ""))
-	])
-	lines.append("Degree 4 count / ratio: %s / %s" % [
-		str(metrics.get("degree_4_count", "")),
-		str(metrics.get("degree_4_ratio", ""))
-	])
-
-	lines.append("")
 	lines.append("[b]Shape / Local Complexity[/b]")
 	lines.append("Floor-wall adjacency count: %s" % str(metrics.get("floor_wall_adjacency_count", "")))
 	lines.append("Normalized perimeter: %s" % str(metrics.get("normalized_perimeter", "")))
@@ -367,6 +335,17 @@ func _format_metrics(metrics: Dictionary) -> String:
 	lines.append("Declared room count: %s" % str(metrics.get("declared_room_count", "")))
 	lines.append("Largest declared room area: %s" % str(metrics.get("largest_declared_room_area", "")))
 
+	if str(metrics.get("algorithm", "")) == "ProcGenHybrid":
+		lines.append("")
+		lines.append("[b]ProcGen Structure[/b]")
+		lines.append("Corridor links: %s" % str(metrics.get("procgen_corridor_link_count", "")))
+		lines.append("Dead-end rooms: %s" % str(metrics.get("procgen_dead_end_room_count", "")))
+		lines.append("Room min degree: %s" % str(metrics.get("procgen_room_connection_min_degree", "")))
+		lines.append("Room max degree: %s" % str(metrics.get("procgen_room_connection_max_degree", "")))
+		lines.append("Room average degree: %s" % str(metrics.get("procgen_room_connection_average_degree", "")))
+		lines.append("Cycle links: %s" % str(metrics.get("procgen_cycle_link_count", "")))
+		lines.append("Has cycles: %s" % str(metrics.get("procgen_has_cycles", "")))
+
 	if str(metrics.get("algorithm", "")) == "ModuleWFC":
 		lines.append("")
 		lines.append("[b]Module WFC[/b]")
@@ -377,6 +356,19 @@ func _format_metrics(metrics: Dictionary) -> String:
 		lines.append("Small rooms: %s" % str(metrics.get("small_room_count", "")))
 		lines.append("Medium rooms: %s" % str(metrics.get("medium_room_count", "")))
 		lines.append("Large rooms: %s" % str(metrics.get("large_room_count", "")))
+		lines.append("Dead-end modules: %s" % str(metrics.get("dead_end_module_count", "")))
+		lines.append("Dead-end rooms: %s" % str(metrics.get("dead_end_room_count", "")))
+		lines.append("Pass-through rooms: %s" % str(metrics.get("pass_through_room_count", "")))
+		lines.append("Hub rooms: %s" % str(metrics.get("hub_room_count", "")))
+
+		if metrics.has("wfc_valid_layout"):
+			lines.append("WFC valid layout: %s" % str(metrics.get("wfc_valid_layout", "")))
+
+		if metrics.has("wfc_valid_composition"):
+			lines.append("WFC valid composition: %s" % str(metrics.get("wfc_valid_composition", "")))
+
+		if metrics.has("wfc_accepted_attempt"):
+			lines.append("WFC accepted attempt: %s" % str(metrics.get("wfc_accepted_attempt", "")))
 
 	lines.append("")
 	lines.append("[b]Options[/b]")

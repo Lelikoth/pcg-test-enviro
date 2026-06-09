@@ -320,16 +320,6 @@ max_value = 32.0
 value = 8.0
 rounded = true
 
-[node name="Label3" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=153529701]
-layout_mode = 2
-text = "WFC Max Retries"
-
-[node name="WFCMaxRetriesSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1539703098]
-layout_mode = 2
-min_value = 1.0
-value = 20.0
-rounded = true
-
 [node name="Label4" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1510097387]
 layout_mode = 2
 text = "WFC Min Small Corridors"
@@ -358,6 +348,16 @@ text = "WFC Min Large Rooms"
 layout_mode = 2
 max_value = 50.0
 value = 1.0
+
+[node name="Label7" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=153529701]
+layout_mode = 2
+text = "WFC Max Retries"
+
+[node name="WFCMaxRetriesSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1539703098]
+layout_mode = 2
+min_value = 1.0
+value = 20.0
+rounded = true
 
 [node name="FixedStartEndCheck" type="CheckBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox" unique_id=612096543]
 layout_mode = 2

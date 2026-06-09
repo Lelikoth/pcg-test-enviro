@@ -21,7 +21,6 @@ func generate_map(config: Dictionary) -> Dictionary:
 	var smoothing_iterations: int = config.get("ca_iterations", 5)
 
 	# The original addon has borderWidth as a parameter.
-	# It is not in your current UI by default, so we use 1 unless provided.
 	var border_width: int = config.get("ca_border_width", DEFAULT_BORDER_WIDTH)
 
 	var use_fixed_start_end_rooms: bool = config.get("use_fixed_start_end_rooms", false)

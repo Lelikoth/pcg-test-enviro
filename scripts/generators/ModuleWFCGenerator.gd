@@ -5,8 +5,10 @@ const MODULE_LIBRARY_SCRIPT := preload("res://scripts/generators/ModuleLibrary.g
 
 var module_library := ModuleLibrary.new()
 
+
 func get_algorithm_name() -> String:
 	return "ModuleWFC"
+
 
 func generate_map(config: Dictionary) -> Dictionary:
 	var module_grid_width: int = config.get("wfc_module_grid_width", 8)
@@ -29,11 +31,21 @@ func generate_map(config: Dictionary) -> Dictionary:
 
 	if module_library.get_modules().is_empty():
 		push_error("ModuleWFC: Module library is empty.")
-		return _fallback_empty_map(module_grid_width * max(1, module_size), module_grid_height * max(1, module_size), seed_value)
+		return _fallback_empty_map(
+			module_grid_width * max(1, module_size),
+			module_grid_height * max(1, module_size),
+			seed_value,
+			"empty_module_library"
+		)
 
 	if module_size <= 0:
 		push_error("ModuleWFC: Invalid module size.")
-		return _fallback_empty_map(module_grid_width * 5, module_grid_height * 5, seed_value)
+		return _fallback_empty_map(
+			module_grid_width * 5,
+			module_grid_height * 5,
+			seed_value,
+			"invalid_module_size"
+		)
 
 	var rng := RandomNumberGenerator.new()
 	if use_random_seed:
@@ -44,6 +56,13 @@ func generate_map(config: Dictionary) -> Dictionary:
 	var solved_cells: Array = []
 	var success: bool = false
 	var retries_used: int = 0
+
+	# Last generated collapsed result, even if it failed validation/composition.
+	var last_generated_cells: Array = []
+	var last_generated_grid: Array = []
+	var last_generated_valid_layout: bool = false
+	var last_generated_valid_composition: bool = false
+	var last_generated_attempt: int = -1
 
 	for attempt in range(max_retries):
 		retries_used = attempt
@@ -57,11 +76,16 @@ func generate_map(config: Dictionary) -> Dictionary:
 			print("ModuleWFC boundary constraints failed on attempt ", attempt + 1)
 			continue
 
-		success = _collapse_cells(cells, module_grid_width, module_grid_height, rng)
-		print("ModuleWFC collapse success: ", success)
+		var collapse_success: bool = _collapse_cells(cells, module_grid_width, module_grid_height, rng)
+		print("ModuleWFC collapse success: ", collapse_success)
 
-		if success:
-			var preview_grid: Array = _build_final_grid(cells, module_grid_width, module_grid_height, module_size)
+		if collapse_success:
+			var preview_grid: Array = _build_final_grid(
+				cells,
+				module_grid_width,
+				module_grid_height,
+				module_size
+			)
 
 			var preview_start: Vector2i = _find_nearest_floor(preview_grid, Vector2i(1, 1))
 			var preview_end: Vector2i = _find_farthest_floor(preview_grid, preview_start)
@@ -79,23 +103,79 @@ func generate_map(config: Dictionary) -> Dictionary:
 			print("ModuleWFC map validation success: ", valid_layout)
 			print("ModuleWFC composition validation success: ", valid_composition)
 
+			# Store the last collapsed result, even if it does not pass final constraints.
+			last_generated_cells = cells.duplicate(true)
+			last_generated_grid = preview_grid.duplicate(true)
+			last_generated_valid_layout = valid_layout
+			last_generated_valid_composition = valid_composition
+			last_generated_attempt = attempt
+
 			if valid_layout and valid_composition:
 				solved_cells = cells
+				success = true
 				break
-			else:
-				success = false
 
 	if not success:
-		push_warning("ModuleWFC failed after %d retries. Returning fallback map." % max_retries)
-		print("ModuleWFC FAILED: returning fallback empty map")
-		var fallback := _fallback_empty_map(module_grid_width * module_size, module_grid_height * module_size, seed_value)
+		push_warning("ModuleWFC failed after %d retries." % max_retries)
+
+		if not last_generated_cells.is_empty() and not last_generated_grid.is_empty():
+			print("ModuleWFC FAILED: returning last generated map instead of empty fallback.")
+
+			return _build_result_from_grid_and_cells(
+				last_generated_grid,
+				last_generated_cells,
+				seed_value,
+				retries_used + 1,
+				keep_only_reachable_area_from_start,
+				true,
+				"last_generated_failed_constraints",
+				last_generated_valid_layout,
+				last_generated_valid_composition,
+				last_generated_attempt + 1
+			)
+
+		print("ModuleWFC FAILED: no collapsed map available, returning empty fallback.")
+
+		var fallback := _fallback_empty_map(
+			module_grid_width * module_size,
+			module_grid_height * module_size,
+			seed_value,
+			"no_collapsed_map_available"
+		)
 		fallback["retry_count"] = retries_used + 1
 		return fallback
 
 	var grid: Array = _build_final_grid(solved_cells, module_grid_width, module_grid_height, module_size)
+
 	print("ModuleWFC floor count after build: ", _count_floor_cells(grid))
 	print("ModuleWFC accepted composition counts: ", _count_module_categories(solved_cells, module_grid_width, module_grid_height))
 
+	return _build_result_from_grid_and_cells(
+		grid,
+		solved_cells,
+		seed_value,
+		retries_used + 1,
+		keep_only_reachable_area_from_start,
+		false,
+		"",
+		true,
+		true,
+		retries_used + 1
+	)
+
+
+func _build_result_from_grid_and_cells(
+	grid: Array,
+	cells: Array,
+	seed_value: int,
+	retry_count: int,
+	keep_only_reachable_area_from_start: bool,
+	failed_generation: bool,
+	fallback_reason: String,
+	valid_layout: bool,
+	valid_composition: bool,
+	accepted_attempt: int
+) -> Dictionary:
 	var start: Vector2i = _find_nearest_floor(grid, Vector2i(1, 1))
 	var end: Vector2i = _find_farthest_floor(grid, start)
 
@@ -110,9 +190,15 @@ func generate_map(config: Dictionary) -> Dictionary:
 		"rooms": [],
 		"algorithm": get_algorithm_name(),
 		"seed": seed_value,
-		"retry_count": retries_used + 1,
-		"module_cells": solved_cells
+		"retry_count": retry_count,
+		"module_cells": cells,
+		"failed_generation": failed_generation,
+		"fallback_reason": fallback_reason,
+		"wfc_valid_layout": valid_layout,
+		"wfc_valid_composition": valid_composition,
+		"wfc_accepted_attempt": accepted_attempt
 	}
+
 
 func _create_initial_cells(module_grid_width: int, module_grid_height: int) -> Array:
 	var all_modules: Array = module_library.get_modules()
@@ -128,6 +214,7 @@ func _create_initial_cells(module_grid_width: int, module_grid_height: int) -> A
 		cells.append(row)
 
 	return cells
+
 
 func _apply_boundary_constraints(cells: Array, module_grid_width: int, module_grid_height: int) -> bool:
 	for y in range(module_grid_height):
@@ -160,6 +247,7 @@ func _apply_boundary_constraints(cells: Array, module_grid_width: int, module_gr
 
 	return true
 
+
 func _collapse_cells(cells: Array, module_grid_width: int, module_grid_height: int, rng: RandomNumberGenerator) -> bool:
 	if not _propagate_all(cells, module_grid_width, module_grid_height):
 		return false
@@ -185,6 +273,7 @@ func _collapse_cells(cells: Array, module_grid_width: int, module_grid_height: i
 
 	return true
 
+
 func _find_lowest_entropy_cell(cells: Array, module_grid_width: int, module_grid_height: int) -> Vector2i:
 	var best_pos: Vector2i = Vector2i(-1, -1)
 	var best_entropy: float = INF
@@ -204,6 +293,7 @@ func _find_lowest_entropy_cell(cells: Array, module_grid_width: int, module_grid
 
 	return best_pos
 
+
 func _choose_weighted_module(options: Array, rng: RandomNumberGenerator) -> Dictionary:
 	var total_weight: float = 0.0
 
@@ -222,6 +312,7 @@ func _choose_weighted_module(options: Array, rng: RandomNumberGenerator) -> Dict
 
 	return options[options.size() - 1]
 
+
 func _propagate_all(cells: Array, module_grid_width: int, module_grid_height: int) -> bool:
 	var queue: Array = []
 
@@ -231,9 +322,11 @@ func _propagate_all(cells: Array, module_grid_width: int, module_grid_height: in
 
 	return _process_propagation_queue(cells, module_grid_width, module_grid_height, queue)
 
+
 func _propagate_from(cells: Array, module_grid_width: int, module_grid_height: int, start_pos: Vector2i) -> bool:
 	var queue: Array = [start_pos]
 	return _process_propagation_queue(cells, module_grid_width, module_grid_height, queue)
+
 
 func _process_propagation_queue(cells: Array, module_grid_width: int, module_grid_height: int, queue: Array) -> bool:
 	var directions := {
@@ -287,6 +380,7 @@ func _process_propagation_queue(cells: Array, module_grid_width: int, module_gri
 
 	return true
 
+
 func _build_final_grid(cells: Array, module_grid_width: int, module_grid_height: int, module_size: int) -> Array:
 	var final_width: int = module_grid_width * module_size
 	var final_height: int = module_grid_height * module_size
@@ -322,8 +416,10 @@ func _build_final_grid(cells: Array, module_grid_width: int, module_grid_height:
 
 	return grid
 
+
 func _is_inside_module_grid(pos: Vector2i, width: int, height: int) -> bool:
 	return pos.x >= 0 and pos.x < width and pos.y >= 0 and pos.y < height
+
 
 func _is_valid_generated_map(grid: Array, start: Vector2i, end: Vector2i) -> bool:
 	var floor_count: int = _count_floor_cells(grid)
@@ -344,6 +440,7 @@ func _is_valid_generated_map(grid: Array, start: Vector2i, end: Vector2i) -> boo
 		return false
 
 	return true
+
 
 func _has_valid_module_composition(
 	cells: Array,
@@ -372,6 +469,7 @@ func _has_valid_module_composition(
 		return false
 
 	return true
+
 
 func _count_module_categories(cells: Array, module_grid_width: int, module_grid_height: int) -> Dictionary:
 	var counts := {
@@ -402,6 +500,7 @@ func _count_module_categories(cells: Array, module_grid_width: int, module_grid_
 				counts["large_rooms"] += 1
 
 	return counts
+
 
 func _find_path_length(grid: Array, start: Vector2i, end: Vector2i) -> int:
 	if not _is_inside_grid(grid, start) or not _is_inside_grid(grid, end):
@@ -451,6 +550,7 @@ func _find_path_length(grid: Array, start: Vector2i, end: Vector2i) -> int:
 
 	return -1
 
+
 func _largest_connected_floor_component(grid: Array) -> int:
 	var visited := {}
 	var best_size: int = 0
@@ -470,6 +570,7 @@ func _largest_connected_floor_component(grid: Array) -> int:
 				best_size = component_size
 
 	return best_size
+
 
 func _flood_fill_floor_component(grid: Array, start: Vector2i, visited: Dictionary) -> int:
 	var queue: Array = [start]
@@ -504,6 +605,7 @@ func _flood_fill_floor_component(grid: Array, start: Vector2i, visited: Dictiona
 
 	return size
 
+
 func _find_nearest_floor(grid: Array, origin: Vector2i) -> Vector2i:
 	if _is_inside_grid(grid, origin) and grid[origin.y][origin.x] == MapTypes.FLOOR:
 		return origin
@@ -522,6 +624,7 @@ func _find_nearest_floor(grid: Array, origin: Vector2i) -> Vector2i:
 
 	return best
 
+
 func _find_farthest_floor(grid: Array, origin: Vector2i) -> Vector2i:
 	var best: Vector2i = origin
 	var best_dist: float = -1.0
@@ -536,6 +639,7 @@ func _find_farthest_floor(grid: Array, origin: Vector2i) -> Vector2i:
 					best = candidate
 
 	return best
+
 
 func _keep_only_reachable_from_start(grid: Array, start: Vector2i) -> void:
 	if not _is_inside_grid(grid, start):
@@ -574,11 +678,14 @@ func _keep_only_reachable_from_start(grid: Array, start: Vector2i) -> void:
 				if not visited.has(_pos_key(pos)):
 					grid[y][x] = MapTypes.WALL
 
+
 func _is_inside_grid(grid: Array, pos: Vector2i) -> bool:
 	return pos.y >= 0 and pos.y < grid.size() and pos.x >= 0 and pos.x < grid[0].size()
 
+
 func _pos_key(pos: Vector2i) -> String:
 	return "%d_%d" % [pos.x, pos.y]
+
 
 func _count_floor_cells(grid: Array) -> int:
 	var count: int = 0
@@ -590,12 +697,16 @@ func _count_floor_cells(grid: Array) -> int:
 
 	return count
 
-func _fallback_empty_map(width: int, height: int, seed_value: int) -> Dictionary:
+
+func _fallback_empty_map(width: int, height: int, seed_value: int, reason: String = "empty_fallback") -> Dictionary:
 	var grid: Array = []
+
 	for y in range(height):
 		var row: Array = []
+
 		for x in range(width):
 			row.append(MapTypes.WALL)
+
 		grid.append(row)
 
 	return {
@@ -605,5 +716,11 @@ func _fallback_empty_map(width: int, height: int, seed_value: int) -> Dictionary
 		"rooms": [],
 		"algorithm": get_algorithm_name(),
 		"seed": seed_value,
-		"retry_count": 0
+		"retry_count": 0,
+		"module_cells": [],
+		"failed_generation": true,
+		"fallback_reason": reason,
+		"wfc_valid_layout": false,
+		"wfc_valid_composition": false,
+		"wfc_accepted_attempt": 0
 	}
