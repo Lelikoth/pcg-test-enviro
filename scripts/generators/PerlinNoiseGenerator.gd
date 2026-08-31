@@ -1,101 +1,117 @@
-extends BaseGenerator
 class_name PerlinNoiseGenerator
+extends BaseGenerator
 
+## Generates binary maps from a two-dimensional Perlin noise field.
+##
+## FastNoiseLite is sampled independently for every map cell. Noise values
+## below the configured threshold are converted to floor, while the remaining
+## cells become walls.
+
+
+## Returns the identifier used for this generator in test results and exports.
 func get_algorithm_name() -> String:
 	return "PerlinNoise"
 
+
+## Generates a map using Perlin noise provided by FastNoiseLite.
+##
+## The configuration controls map dimensions, seed handling, noise frequency,
+## threshold, and fractal octave count. Endpoint selection is handled
+## separately by MapPostProcessor.
 func generate_map(config: Dictionary) -> Dictionary:
 	var width: int = config.get("width", 64)
 	var height: int = config.get("height", 64)
+
 	var use_random_seed: bool = config.get("random_seed", true)
 	var seed_value: int = config.get("seed", 0)
 
-	var frequency: float = config.get("noise_frequency", 0.05)
-	var threshold: float = config.get("noise_threshold", 0.0)
-	var octaves: int = config.get("noise_fractal_octaves", 3)
+	var frequency: float = config.get(
+		"noise_frequency",
+		0.05
+	)
 
-	var rng := RandomNumberGenerator.new()
+	var threshold: float = config.get(
+		"noise_threshold",
+		0.0
+	)
+
+	var octaves: int = config.get(
+		"noise_fractal_octaves",
+		3
+	)
+
 	if use_random_seed:
+		var rng := RandomNumberGenerator.new()
 		rng.randomize()
 		seed_value = rng.randi()
 
 	var noise := FastNoiseLite.new()
+
 	noise.seed = seed_value
 	noise.noise_type = FastNoiseLite.TYPE_PERLIN
 	noise.frequency = frequency
 	noise.fractal_octaves = octaves
 
-	var grid: Array = []
-	for y in range(height):
-		var row: Array = []
-		for x in range(width):
-			var value: float = noise.get_noise_2d(float(x), float(y))
-			if value < threshold:
-				row.append(MapTypes.FLOOR)
-			else:
-				row.append(MapTypes.WALL)
-		grid.append(row)
+	var grid := _generate_noise_grid(
+		width,
+		height,
+		noise,
+		threshold
+	)
 
 	_make_borders_walls(grid)
 
-	var start: Vector2i = _find_nearest_floor(grid, Vector2i(1, 1))
-	var end: Vector2i = _find_farthest_floor(grid, start)
-
 	return {
 		"grid": grid,
-		"start": start,
-		"end": end,
 		"rooms": [],
 		"algorithm": get_algorithm_name(),
 		"seed": seed_value
 	}
 
+
+## Converts sampled noise values into a binary floor/wall grid.
+func _generate_noise_grid(
+	width: int,
+	height: int,
+	noise: FastNoiseLite,
+	threshold: float
+) -> Array:
+	var grid: Array = []
+
+	for y in range(height):
+		var row: Array = []
+
+		for x in range(width):
+			var noise_value: float = noise.get_noise_2d(
+				float(x),
+				float(y)
+			)
+
+			if noise_value < threshold:
+				row.append(MapTypes.FLOOR)
+			else:
+				row.append(MapTypes.WALL)
+
+		grid.append(row)
+
+	return grid
+
+
+## Forces the outermost map cells to be walls.
 func _make_borders_walls(grid: Array) -> void:
-	var h: int = grid.size()
-	if h == 0:
+	if grid.is_empty():
 		return
-	var w: int = grid[0].size()
 
-	for x in range(w):
+	if grid[0].is_empty():
+		return
+
+	var height: int = grid.size()
+	var width: int = grid[0].size()
+
+	for x in range(width):
 		grid[0][x] = MapTypes.WALL
-		grid[h - 1][x] = MapTypes.WALL
+		grid[height - 1][x] = MapTypes.WALL
 
-	for y in range(h):
+	for y in range(height):
 		grid[y][0] = MapTypes.WALL
-		grid[y][w - 1] = MapTypes.WALL
-
-func _find_nearest_floor(grid: Array, origin: Vector2i) -> Vector2i:
-	if _is_inside(grid, origin) and grid[origin.y][origin.x] == MapTypes.FLOOR:
-		return origin
-
-	var best: Vector2i = origin
-	var best_dist: float = INF
-
-	for y in range(grid.size()):
-		for x in range(grid[y].size()):
-			if grid[y][x] == MapTypes.FLOOR:
-				var candidate: Vector2i = Vector2i(x, y)
-				var dist: float = origin.distance_squared_to(candidate)
-				if dist < best_dist:
-					best_dist = dist
-					best = candidate
-
-	return best
-
-func _find_farthest_floor(grid: Array, origin: Vector2i) -> Vector2i:
-	var best: Vector2i = origin
-	var best_dist: float = -1.0
-
-	for y in range(grid.size()):
-		for x in range(grid[y].size()):
-			if grid[y][x] == MapTypes.FLOOR:
-				var candidate: Vector2i = Vector2i(x, y)
-				var dist: float = origin.distance_squared_to(candidate)
-				if dist > best_dist:
-					best_dist = dist
-					best = candidate
-
-	return best
-
-func _is_inside(grid: Array, pos: Vector2i) -> bool:
-	return pos.y >= 0 and pos.y < grid.size() and pos.x >= 0 and pos.x < grid[0].size()
+		grid[y][width - 1] = MapTypes.WALL

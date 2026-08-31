@@ -203,6 +203,83 @@ max_value = 1.0
 step = 0.01
 value = 0.08
 
+[node name="Label15" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1520379842]
+layout_mode = 2
+text = "Zone split max ratio"
+
+[node name="ProcGenZoneSplitMaxRatioSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1950673351]
+layout_mode = 2
+min_value = 0.1
+max_value = 0.9
+step = 0.01
+value = 0.1
+
+[node name="Label16" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1636924724]
+layout_mode = 2
+text = "Inverse orientation chance"
+
+[node name="ProcGenZoneInverseOrientationChanceSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=295048434]
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 0.08
+
+[node name="Label17" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1227985253]
+layout_mode = 2
+text = "Room min squared ratio"
+
+[node name="ProcGenRoomMinSquaredRatioSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=663508537]
+layout_mode = 2
+min_value = 0.1
+max_value = 1.0
+step = 0.01
+value = 0.1
+
+[node name="Label18" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=926169936]
+layout_mode = 2
+text = "Room max squared ratio"
+
+[node name="ProcGenRoomMaxSquaredRatioSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1598792464]
+layout_mode = 2
+min_value = 0.1
+max_value = 1.0
+step = 0.01
+value = 0.1
+
+[node name="Label19" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1016922764]
+layout_mode = 2
+text = "Corridor edge overlap min ratio"
+
+[node name="ProcGenCorridorEdgeOverlapMinRatioSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=485962805]
+layout_mode = 2
+max_value = 1.0
+step = 0.01
+value = 0.08
+
+[node name="Label20" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1218275652]
+layout_mode = 2
+text = "Automaton cell min neighbors"
+
+[node name="ProcGenAutomatonCellMinNeighborsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=834691628]
+layout_mode = 2
+max_value = 8.0
+
+[node name="Label21" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1255276386]
+layout_mode = 2
+text = "Automaton cell max neighbors"
+
+[node name="ProcGenAutomatonCellMaxNeighborsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=1857018979]
+layout_mode = 2
+max_value = 8.0
+
+[node name="Label22" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=2057889193]
+layout_mode = 2
+text = "Smoothing min neighbors"
+
+[node name="ProcGenAutomatonSmoothingMinNeighborsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ProcGenSectionRoot/ContentContainer" unique_id=843442327]
+layout_mode = 2
+max_value = 8.0
+
 [node name="NoiseSectionRoot" type="VBoxContainer" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox" unique_id=1607537390]
 layout_mode = 2
 script = ExtResource("3_eoh6s")
@@ -286,6 +363,15 @@ layout_mode = 2
 max_value = 10.0
 value = 1.0
 
+[node name="Label4" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=1674865617]
+layout_mode = 2
+text = "Wall Threshold"
+
+[node name="CAWallThresholdSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/CellularSectionRoot/ContentContainer" unique_id=56972317]
+layout_mode = 2
+max_value = 8.0
+value = 4.0
+
 [node name="ModuleWFCSectionRoot" type="VBoxContainer" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox" unique_id=2004844764]
 layout_mode = 2
 script = ExtResource("3_eoh6s")
@@ -305,7 +391,6 @@ text = "WFC Module Grid Width"
 [node name="WFCModuleGridWidthSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1582464159]
 layout_mode = 2
 min_value = 4.0
-max_value = 32.0
 value = 8.0
 rounded = true
 
@@ -316,7 +401,6 @@ text = "WFC Module Grid Height"
 [node name="WFCModuleGridHeightSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=42027975]
 layout_mode = 2
 min_value = 4.0
-max_value = 32.0
 value = 8.0
 rounded = true
 
@@ -326,7 +410,6 @@ text = "WFC Min Small Corridors"
 
 [node name="WFCMinSmallCorridorsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1185195444]
 layout_mode = 2
-max_value = 50.0
 value = 4.0
 rounded = true
 
@@ -336,7 +419,6 @@ text = "WFC Min Medium Rooms"
 
 [node name="WFCMinMediumRoomsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=580791675]
 layout_mode = 2
-max_value = 50.0
 value = 2.0
 rounded = true
 
@@ -346,7 +428,6 @@ text = "WFC Min Large Rooms"
 
 [node name="WFCMinLargeRoomsSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=811402295]
 layout_mode = 2
-max_value = 50.0
 value = 1.0
 
 [node name="Label7" type="Label" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=153529701]
@@ -356,6 +437,7 @@ text = "WFC Max Retries"
 [node name="WFCMaxRetriesSpin" type="SpinBox" parent="RootContainer/LeftPanel/ScrollContainer/ControlsRootVBox/ModuleWFCSectionRoot/ContentContainer" unique_id=1539703098]
 layout_mode = 2
 min_value = 1.0
+max_value = 1000000.0
 value = 20.0
 rounded = true
 

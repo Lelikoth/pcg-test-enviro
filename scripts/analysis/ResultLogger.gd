@@ -1,142 +1,269 @@
-extends RefCounted
 class_name ResultLogger
+extends RefCounted
 
-func save_csv(path: String, rows: Array) -> bool:
+## Handles CSV export of test results.
+##
+## Result rows are stored as dictionaries and automatically converted to
+## a CSV representation. When appending a row containing previously unseen
+## fields, the existing file is rewritten with an expanded header.
+
+
+## Saves all provided result rows to a CSV file, replacing existing content.
+func save_csv(
+	path: String,
+	rows: Array
+) -> bool:
 	if rows.is_empty():
-		push_warning("ResultLogger.save_csv: no rows to save for path: " + path)
+		push_warning(
+			"ResultLogger.save_csv: no rows to save for path: " + path
+		)
 		return false
 
-	var headers: Array = _collect_headers(rows)
+	var headers := _collect_headers(rows)
+
 	if headers.is_empty():
-		push_warning("ResultLogger.save_csv: no headers found for path: " + path)
+		push_warning(
+			"ResultLogger.save_csv: no headers found for path: " + path
+		)
 		return false
 
-	if not _ensure_parent_dir(path):
-		push_error("ResultLogger.save_csv: failed to create parent dir for path: " + path)
-		return false
+	return _write_csv(path, rows, headers)
 
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		push_error("ResultLogger.save_csv: failed to open file for writing: " + path)
-		return false
 
-	file.store_line(_csv_line_from_values(headers))
-
-	for row_value in rows:
-		var row: Dictionary = row_value
-		var values: Array = _row_to_values(row, headers)
-		file.store_line(_csv_line_from_values(values))
-
-	file.close()
-	return true
-
-func append_csv(path: String, row: Dictionary, include_header_if_new: bool = true) -> bool:
+## Appends a single result row to a CSV file.
+##
+## If the row introduces new columns, the existing file is rewritten using
+## the merged header so that all rows retain a consistent column structure.
+func append_csv(
+	path: String,
+	row: Dictionary,
+	include_header_if_new: bool = true
+) -> bool:
 	if row.is_empty():
-		push_warning("ResultLogger.append_csv: empty row for path: " + path)
+		push_warning(
+			"ResultLogger.append_csv: empty row for path: " + path
+		)
 		return false
 
 	if not _ensure_parent_dir(path):
-		push_error("ResultLogger.append_csv: failed to create parent dir for path: " + path)
+		push_error(
+			"ResultLogger.append_csv: failed to create parent directory: "
+			+ path
+		)
 		return false
 
-	var file_exists: bool = FileAccess.file_exists(path)
+	var row_headers := _collect_headers([row])
 
-	if not file_exists:
-		var write_file := FileAccess.open(path, FileAccess.WRITE)
-		if write_file == null:
-			push_error("ResultLogger.append_csv: failed to create file: " + path)
-			return false
+	if not FileAccess.file_exists(path):
+		return _create_csv_file(
+			path,
+			row,
+			row_headers,
+			include_header_if_new
+		)
 
-		var headers_new: Array = _collect_headers([row])
-		if include_header_if_new:
-			write_file.store_line(_csv_line_from_values(headers_new))
+	var existing_headers := _read_header(path)
 
-		write_file.store_line(_csv_line_from_values(_row_to_values(row, headers_new)))
-		write_file.close()
-		return true
-
-	var existing_headers: Array = _read_header(path)
-	var row_headers: Array = _collect_headers([row])
-
+	# An existing file without a valid header is treated as a new CSV file.
 	if existing_headers.is_empty():
-		var rewrite_headers: Array = row_headers
-		var rewrite_file := FileAccess.open(path, FileAccess.WRITE)
-		if rewrite_file == null:
-			push_error("ResultLogger.append_csv: failed to rewrite empty-header file: " + path)
-			return false
+		return _create_csv_file(
+			path,
+			row,
+			row_headers,
+			include_header_if_new
+		)
 
-		if include_header_if_new:
-			rewrite_file.store_line(_csv_line_from_values(rewrite_headers))
-		rewrite_file.store_line(_csv_line_from_values(_row_to_values(row, rewrite_headers)))
-		rewrite_file.close()
-		return true
-
-	var merged_headers: Array = _merge_headers(existing_headers, row_headers)
+	var merged_headers := _merge_headers(
+		existing_headers,
+		row_headers
+	)
 
 	if merged_headers.size() != existing_headers.size():
-		return _rewrite_csv_with_new_header(path, merged_headers, row)
+		return _rewrite_csv_with_new_header(
+			path,
+			merged_headers,
+			row
+		)
 
-	var append_file := FileAccess.open(path, FileAccess.READ_WRITE)
-	if append_file == null:
-		push_error("ResultLogger.append_csv: failed to open file for append: " + path)
+	var file := FileAccess.open(
+		path,
+		FileAccess.READ_WRITE
+	)
+
+	if file == null:
+		push_error(
+			"ResultLogger.append_csv: failed to open file for append: "
+			+ path
+		)
 		return false
 
-	append_file.seek_end()
-	append_file.store_line(_csv_line_from_values(_row_to_values(row, existing_headers)))
-	append_file.close()
+	file.seek_end()
+
+	file.store_line(
+		_csv_line_from_values(
+			_row_to_values(row, existing_headers)
+		)
+	)
+
+	file.close()
+
 	return true
 
-func _rewrite_csv_with_new_header(path: String, new_headers: Array, new_row: Dictionary) -> bool:
-	var existing_rows: Array = _read_csv_rows(path)
-	if existing_rows.is_empty():
-		existing_rows = []
+
+## Writes a complete CSV file using the provided column order.
+func _write_csv(
+	path: String,
+	rows: Array,
+	headers: Array
+) -> bool:
+	if not _ensure_parent_dir(path):
+		push_error(
+			"ResultLogger: failed to create parent directory: " + path
+		)
+		return false
+
+	var file := FileAccess.open(
+		path,
+		FileAccess.WRITE
+	)
+
+	if file == null:
+		push_error(
+			"ResultLogger: failed to open file for writing: " + path
+		)
+		return false
+
+	file.store_line(
+		_csv_line_from_values(headers)
+	)
+
+	for row_value in rows:
+		if not row_value is Dictionary:
+			continue
+
+		var row: Dictionary = row_value
+		var values := _row_to_values(row, headers)
+
+		file.store_line(
+			_csv_line_from_values(values)
+		)
+
+	file.close()
+
+	return true
+
+
+## Creates a new CSV file containing a single row.
+func _create_csv_file(
+	path: String,
+	row: Dictionary,
+	headers: Array,
+	include_header: bool
+) -> bool:
+	var file := FileAccess.open(
+		path,
+		FileAccess.WRITE
+	)
+
+	if file == null:
+		push_error(
+			"ResultLogger.append_csv: failed to create file: " + path
+		)
+		return false
+
+	if include_header:
+		file.store_line(
+			_csv_line_from_values(headers)
+		)
+
+	file.store_line(
+		_csv_line_from_values(
+			_row_to_values(row, headers)
+		)
+	)
+
+	file.close()
+
+	return true
+
+
+## Rewrites an existing CSV file after new columns are introduced.
+func _rewrite_csv_with_new_header(
+	path: String,
+	new_headers: Array,
+	new_row: Dictionary
+) -> bool:
+	var existing_rows := _read_csv_rows(path)
 
 	existing_rows.append(new_row)
-	return save_csv(path, existing_rows)
 
+	return _write_csv(
+		path,
+		existing_rows,
+		new_headers
+	)
+
+
+## Reads all CSV rows and converts them to dictionaries using the file header.
 func _read_csv_rows(path: String) -> Array:
 	var rows: Array = []
 
 	if not FileAccess.file_exists(path):
 		return rows
 
-	var file := FileAccess.open(path, FileAccess.READ)
+	var file := FileAccess.open(
+		path,
+		FileAccess.READ
+	)
+
 	if file == null:
-		push_warning("ResultLogger._read_csv_rows: failed to open file: " + path)
+		push_warning(
+			"ResultLogger._read_csv_rows: failed to open file: " + path
+		)
 		return rows
 
 	if file.eof_reached():
 		file.close()
 		return rows
 
-	var header_line: String = file.get_line()
-	var headers: Array = _parse_csv_line(header_line)
+	var header_line := file.get_line()
+	var headers := _parse_csv_line(header_line)
 
 	while not file.eof_reached():
-		var line: String = file.get_line()
-		if line.strip_edges() == "":
+		var line := file.get_line()
+
+		if line.strip_edges().is_empty():
 			continue
 
-		var values: Array = _parse_csv_line(line)
-		var row := {}
+		var values := _parse_csv_line(line)
+		var row: Dictionary = {}
 
-		for i in range(headers.size()):
-			var header: String = str(headers[i])
-			var value: String = ""
-			if i < values.size():
-				value = str(values[i])
+		for index in range(headers.size()):
+			var header := str(headers[index])
+			var value := ""
+
+			if index < values.size():
+				value = str(values[index])
+
 			row[header] = value
 
 		rows.append(row)
 
 	file.close()
+
 	return rows
 
+
+## Reads and parses the header of an existing CSV file.
 func _read_header(path: String) -> Array:
 	if not FileAccess.file_exists(path):
 		return []
 
-	var file := FileAccess.open(path, FileAccess.READ)
+	var file := FileAccess.open(
+		path,
+		FileAccess.READ
+	)
+
 	if file == null:
 		return []
 
@@ -144,130 +271,199 @@ func _read_header(path: String) -> Array:
 		file.close()
 		return []
 
-	var line: String = file.get_line()
+	var header_line := file.get_line()
+
 	file.close()
 
-	if line.strip_edges() == "":
+	if header_line.strip_edges().is_empty():
 		return []
 
-	return _parse_csv_line(line)
+	return _parse_csv_line(header_line)
 
+
+## Collects all unique dictionary keys used by the provided result rows.
 func _collect_headers(rows: Array) -> Array:
-	var seen := {}
+	var seen: Dictionary = {}
 	var headers: Array = []
 
 	for row_value in rows:
-		if row_value is Dictionary:
-			var row: Dictionary = row_value
-			var keys: Array = row.keys()
-			keys.sort()
+		if not row_value is Dictionary:
+			continue
 
-			for key_value in keys:
-				var key: String = str(key_value)
-				if not seen.has(key):
-					seen[key] = true
-					headers.append(key)
+		var row: Dictionary = row_value
+		var keys := row.keys()
+
+		keys.sort()
+
+		for key_value in keys:
+			var key := str(key_value)
+
+			if seen.has(key):
+				continue
+
+			seen[key] = true
+			headers.append(key)
 
 	return headers
 
-func _merge_headers(existing_headers: Array, new_headers: Array) -> Array:
-	var seen := {}
-	var merged: Array = []
+
+## Merges two header lists while preserving their existing order.
+func _merge_headers(
+	existing_headers: Array,
+	new_headers: Array
+) -> Array:
+	var seen: Dictionary = {}
+	var merged_headers: Array = []
 
 	for header_value in existing_headers:
-		var header: String = str(header_value)
-		if not seen.has(header):
-			seen[header] = true
-			merged.append(header)
+		var header := str(header_value)
+
+		if seen.has(header):
+			continue
+
+		seen[header] = true
+		merged_headers.append(header)
 
 	for header_value in new_headers:
-		var header: String = str(header_value)
-		if not seen.has(header):
-			seen[header] = true
-			merged.append(header)
+		var header := str(header_value)
 
-	return merged
+		if seen.has(header):
+			continue
 
-func _row_to_values(row: Dictionary, headers: Array) -> Array:
+		seen[header] = true
+		merged_headers.append(header)
+
+	return merged_headers
+
+
+## Converts a result dictionary to values following the provided header order.
+func _row_to_values(
+	row: Dictionary,
+	headers: Array
+) -> Array:
 	var values: Array = []
 
 	for header_value in headers:
-		var header: String = str(header_value)
-		var value = row.get(header, "")
-		values.append(_stringify_value(value))
+		var header := str(header_value)
+		var value: Variant = row.get(header, "")
+
+		values.append(
+			_stringify_value(value)
+		)
 
 	return values
 
-func _stringify_value(value) -> String:
+
+## Converts supported Godot values to their CSV string representation.
+func _stringify_value(value: Variant) -> String:
 	match typeof(value):
 		TYPE_BOOL:
 			return "true" if value else "false"
-		TYPE_FLOAT:
+
+		TYPE_FLOAT, TYPE_INT:
 			return str(value)
-		TYPE_INT:
-			return str(value)
+
 		TYPE_STRING:
-			return value
+			return str(value)
+
 		TYPE_VECTOR2I:
-			var v: Vector2i = value
-			return "%d,%d" % [v.x, v.y]
+			var vector: Vector2i = value
+			return "%d,%d" % [
+				vector.x,
+				vector.y
+			]
+
 		TYPE_ARRAY, TYPE_DICTIONARY:
 			return JSON.stringify(value)
+
 		_:
 			return str(value)
 
+
+## Converts a list of values to a properly escaped CSV line.
 func _csv_line_from_values(values: Array) -> String:
-	var escaped: Array = []
+	var escaped_values: Array[String] = []
 
 	for value in values:
-		var text: String = str(value)
-		escaped.append(_escape_csv(text))
+		escaped_values.append(
+			_escape_csv(str(value))
+		)
 
-	return ",".join(PackedStringArray(escaped))
+	return ",".join(
+		PackedStringArray(escaped_values)
+	)
 
+
+## Escapes a single value according to standard CSV quoting rules.
 func _escape_csv(text: String) -> String:
-	var needs_quotes: bool = false
+	var needs_quotes := (
+		text.contains(",")
+		or text.contains("\"")
+		or text.contains("\n")
+		or text.contains("\r")
+	)
 
-	if text.contains(",") or text.contains("\"") or text.contains("\n") or text.contains("\r"):
-		needs_quotes = true
-
-	text = text.replace("\"", "\"\"")
+	text = text.replace(
+		"\"",
+		"\"\""
+	)
 
 	if needs_quotes:
 		return "\"" + text + "\""
 
 	return text
 
+
+## Parses a single CSV line while respecting quoted fields and escaped quotes.
 func _parse_csv_line(line: String) -> Array:
-	var result: Array = []
-	var current: String = ""
-	var in_quotes: bool = false
-	var i: int = 0
+	var values: Array = []
+	var current_value := ""
+	var in_quotes := false
+	var index := 0
 
-	while i < line.length():
-		var ch: String = line.substr(i, 1)
+	while index < line.length():
+		var character := line.substr(
+			index,
+			1
+		)
 
-		if ch == "\"":
-			if in_quotes and i + 1 < line.length() and line.substr(i + 1, 1) == "\"":
-				current += "\""
-				i += 1
+		if character == "\"":
+			if (
+				in_quotes
+				and index + 1 < line.length()
+				and line.substr(index + 1, 1) == "\""
+			):
+				current_value += "\""
+				index += 1
 			else:
 				in_quotes = not in_quotes
-		elif ch == "," and not in_quotes:
-			result.append(current)
-			current = ""
+
+		elif character == "," and not in_quotes:
+			values.append(current_value)
+			current_value = ""
+
 		else:
-			current += ch
+			current_value += character
 
-		i += 1
+		index += 1
 
-	result.append(current)
-	return result
+	values.append(current_value)
 
+	return values
+
+
+## Ensures that the parent directory of the provided path exists.
 func _ensure_parent_dir(path: String) -> bool:
-	var dir_path: String = path.get_base_dir()
-	if dir_path == "":
+	var directory_path := path.get_base_dir()
+
+	if directory_path.is_empty():
 		return true
 
-	var err: Error = DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir_path))
-	return err == OK or err == ERR_ALREADY_EXISTS
+	var error: Error = DirAccess.make_dir_recursive_absolute(
+		ProjectSettings.globalize_path(directory_path)
+	)
+
+	return (
+		error == OK
+		or error == ERR_ALREADY_EXISTS
+	)

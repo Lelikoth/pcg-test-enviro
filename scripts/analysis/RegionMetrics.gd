@@ -1,107 +1,156 @@
-extends RefCounted
 class_name RegionMetrics
+extends RefCounted
+
+## Calculates connectivity and region-based metrics for generated maps.
+##
+## Floor regions are identified using four-directional flood fill. The class
+## also measures how much of the walkable area is reachable from the selected
+## start position.
 
 
-const DIRECTIONS_4: Array[Vector2i] = [
-	Vector2i(1, 0),
-	Vector2i(-1, 0),
-	Vector2i(0, 1),
-	Vector2i(0, -1)
+const CARDINAL_DIRECTIONS: Array[Vector2i] = [
+	Vector2i.RIGHT,
+	Vector2i.LEFT,
+	Vector2i.DOWN,
+	Vector2i.UP
 ]
 
 
-func calculate(grid: Array, start: Vector2i) -> Dictionary:
-	var components: Array = _find_floor_components(grid)
-	var floor_count: int = _count_floor_cells(grid)
+## Calculates connected-region and reachability metrics for the provided grid.
+func calculate(
+	grid: Array,
+	start: Vector2i
+) -> Dictionary:
+	var components := _find_floor_components(grid)
+	var floor_count := _count_floor_cells(grid)
 
-	var largest_component_size: int = 0
-	var total_component_area: int = 0
+	var largest_component_size := 0
+	var total_component_area := 0
 
-	for component in components:
-		var comp: Dictionary = component
-		var size: int = int(comp["area"])
+	for component_value in components:
+		var component: Dictionary = component_value
+		var component_size := int(component["area"])
 
-		total_component_area += size
+		total_component_area += component_size
+		largest_component_size = maxi(
+			largest_component_size,
+			component_size
+		)
 
-		if size > largest_component_size:
-			largest_component_size = size
+	var average_component_area := 0.0
 
-	var average_component_area: float = 0.0
 	if not components.is_empty():
-		average_component_area = float(total_component_area) / float(components.size())
+		average_component_area = (
+			float(total_component_area)
+			/ float(components.size())
+		)
 
-	var reachable_count: int = _reachable_floor_count(grid, start)
-	var unreachable_count: int = max(0, floor_count - reachable_count)
+	var reachable_count := _reachable_floor_count(
+		grid,
+		start
+	)
+
+	var unreachable_count: int = maxi(
+		0,
+		floor_count - reachable_count
+	)
 
 	return {
 		"open_region_count": components.size(),
+
 		"largest_open_region_area": largest_component_size,
-		"largest_open_region_ratio": _safe_divide(float(largest_component_size), float(max(1, floor_count))),
+		"largest_open_region_ratio": _safe_divide(
+			float(largest_component_size),
+			float(maxi(1, floor_count))
+		),
+
 		"average_open_region_area": average_component_area,
 
 		"reachable_floor_count_from_start": reachable_count,
-		"reachable_floor_ratio_from_start": _safe_divide(float(reachable_count), float(max(1, floor_count))),
+		"reachable_floor_ratio_from_start": _safe_divide(
+			float(reachable_count),
+			float(maxi(1, floor_count))
+		),
+
 		"unreachable_floor_count": unreachable_count,
-		"unreachable_floor_ratio": _safe_divide(float(unreachable_count), float(max(1, floor_count)))
+		"unreachable_floor_ratio": _safe_divide(
+			float(unreachable_count),
+			float(maxi(1, floor_count))
+		)
 	}
 
 
+## Finds all connected floor components in the grid.
 func _find_floor_components(grid: Array) -> Array:
 	var components: Array = []
-	var visited := {}
+	var visited: Dictionary = {}
 
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
-			var pos := Vector2i(x, y)
-			var key := _pos_key(pos)
+			var position := Vector2i(x, y)
 
-			if visited.has(key):
+			if visited.has(position):
 				continue
 
 			if grid[y][x] != MapTypes.FLOOR:
 				continue
 
-			var component_cells: Array[Vector2i] = _flood_fill_component(grid, pos, visited)
-			var component_data: Dictionary = _analyze_component(component_cells)
+			var component_cells := _flood_fill_component(
+				grid,
+				position,
+				visited
+			)
+
+			var component_data := _analyze_component(
+				component_cells
+			)
 
 			components.append(component_data)
 
 	return components
 
 
-func _flood_fill_component(grid: Array, start: Vector2i, visited: Dictionary) -> Array[Vector2i]:
+## Performs flood fill starting from a floor tile and returns all cells
+## belonging to the same connected component.
+func _flood_fill_component(
+	grid: Array,
+	start: Vector2i,
+	visited: Dictionary
+) -> Array[Vector2i]:
 	var component: Array[Vector2i] = []
 	var queue: Array[Vector2i] = [start]
-	var head: int = 0
+	var head := 0
 
-	visited[_pos_key(start)] = true
+	visited[start] = true
 
 	while head < queue.size():
-		var current: Vector2i = queue[head]
+		var current := queue[head]
 		head += 1
 
 		component.append(current)
 
-		for dir in DIRECTIONS_4:
-			var next: Vector2i = current + dir
-			var key := _pos_key(next)
+		for direction in CARDINAL_DIRECTIONS:
+			var next_position := current + direction
 
-			if visited.has(key):
+			if visited.has(next_position):
 				continue
 
-			if not _is_inside(grid, next):
+			if not _is_inside_grid(grid, next_position):
 				continue
 
-			if grid[next.y][next.x] != MapTypes.FLOOR:
+			if grid[next_position.y][next_position.x] != MapTypes.FLOOR:
 				continue
 
-			visited[key] = true
-			queue.append(next)
+			visited[next_position] = true
+			queue.append(next_position)
 
 	return component
 
 
-func _analyze_component(component: Array[Vector2i]) -> Dictionary:
+## Calculates the area and bounding box of a connected floor component.
+func _analyze_component(
+	component: Array[Vector2i]
+) -> Dictionary:
 	if component.is_empty():
 		return {
 			"area": 0,
@@ -111,95 +160,110 @@ func _analyze_component(component: Array[Vector2i]) -> Dictionary:
 			"bbox_fill_ratio": 0.0
 		}
 
-	var first: Vector2i = component[0]
-	var min_x: int = first.x
-	var max_x: int = first.x
-	var min_y: int = first.y
-	var max_y: int = first.y
+	var first := component[0]
+
+	var min_x := first.x
+	var max_x := first.x
+	var min_y := first.y
+	var max_y := first.y
 
 	for cell in component:
-		min_x = min(min_x, cell.x)
-		max_x = max(max_x, cell.x)
-		min_y = min(min_y, cell.y)
-		max_y = max(max_y, cell.y)
+		min_x = mini(min_x, cell.x)
+		max_x = maxi(max_x, cell.x)
+		min_y = mini(min_y, cell.y)
+		max_y = maxi(max_y, cell.y)
 
-	var width: int = max_x - min_x + 1
-	var height: int = max_y - min_y + 1
-	var bbox_area: int = width * height
-	var area: int = component.size()
+	var width := max_x - min_x + 1
+	var height := max_y - min_y + 1
+	var bounding_box_area := width * height
+	var area := component.size()
 
 	return {
 		"area": area,
 		"position": Vector2i(min_x, min_y),
 		"size": Vector2i(width, height),
-		"bbox_area": bbox_area,
-		"bbox_fill_ratio": _safe_divide(float(area), float(max(1, bbox_area)))
+		"bbox_area": bounding_box_area,
+		"bbox_fill_ratio": _safe_divide(
+			float(area),
+			float(maxi(1, bounding_box_area))
+		)
 	}
 
 
-func _reachable_floor_count(grid: Array, start: Vector2i) -> int:
-	if not _is_inside(grid, start):
+## Counts floor tiles reachable from the provided start position.
+func _reachable_floor_count(
+	grid: Array,
+	start: Vector2i
+) -> int:
+	if not _is_inside_grid(grid, start):
 		return 0
 
 	if grid[start.y][start.x] != MapTypes.FLOOR:
 		return 0
 
-	var visited := {}
+	var visited: Dictionary = {}
 	var queue: Array[Vector2i] = [start]
-	var head: int = 0
+	var head := 0
 
-	visited[_pos_key(start)] = true
+	visited[start] = true
 
 	while head < queue.size():
-		var current: Vector2i = queue[head]
+		var current := queue[head]
 		head += 1
 
-		for dir in DIRECTIONS_4:
-			var next: Vector2i = current + dir
-			var key := _pos_key(next)
+		for direction in CARDINAL_DIRECTIONS:
+			var next_position := current + direction
 
-			if visited.has(key):
+			if visited.has(next_position):
 				continue
 
-			if not _is_inside(grid, next):
+			if not _is_inside_grid(grid, next_position):
 				continue
 
-			if grid[next.y][next.x] != MapTypes.FLOOR:
+			if grid[next_position.y][next_position.x] != MapTypes.FLOOR:
 				continue
 
-			visited[key] = true
-			queue.append(next)
+			visited[next_position] = true
+			queue.append(next_position)
 
 	return visited.size()
 
 
+## Counts all walkable floor tiles in the grid.
 func _count_floor_cells(grid: Array) -> int:
-	var count: int = 0
+	var floor_count := 0
 
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
 			if grid[y][x] == MapTypes.FLOOR:
-				count += 1
+				floor_count += 1
 
-	return count
+	return floor_count
 
 
-func _is_inside(grid: Array, pos: Vector2i) -> bool:
+## Returns whether the provided position lies within the grid bounds.
+func _is_inside_grid(
+	grid: Array,
+	position: Vector2i
+) -> bool:
+	if grid.is_empty():
+		return false
+
+	if position.y < 0 or position.y >= grid.size():
+		return false
+
 	return (
-		pos.y >= 0
-		and pos.y < grid.size()
-		and pos.x >= 0
-		and grid.size() > 0
-		and pos.x < grid[0].size()
+		position.x >= 0
+		and position.x < grid[position.y].size()
 	)
 
 
-func _pos_key(pos: Vector2i) -> String:
-	return "%d_%d" % [pos.x, pos.y]
-
-
-func _safe_divide(a: float, b: float) -> float:
-	if b == 0.0:
+## Performs division while preventing division by zero.
+func _safe_divide(
+	numerator: float,
+	denominator: float
+) -> float:
+	if denominator == 0.0:
 		return 0.0
 
-	return a / b
+	return numerator / denominator

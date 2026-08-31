@@ -1,151 +1,249 @@
-extends RefCounted
 class_name ModuleLibrary
+extends RefCounted
 
-const MODULES_JSON_PATH := "res://data/wfc/modules_7x7.json"
+## Loads and validates the module definitions used by ModuleWFC.
+##
+## Module definitions are stored in a JSON file and cached in memory.
+## Each module contains a fixed-size binary tile grid, directional openings,
+## generation weight, and semantic tags.
 
-var _modules_cache: Array = []
+
+const MODULES_JSON_PATH: String = "res://data/wfc/modules_7x7.json"
+
+
+var _modules_cache: Array[Dictionary] = []
 var _module_size: int = 0
+
 
 func _init() -> void:
 	_load_data_from_json()
-	print("ModuleLibrary: loaded modules count = ", _modules_cache.size())
-	print("ModuleLibrary: module size = ", _module_size)
 
-func get_modules() -> Array:
+
+## Returns all validated modules loaded from the module library.
+func get_modules() -> Array[Dictionary]:
 	return _modules_cache
 
+
+## Returns the width and height of a single square module in tiles.
 func get_module_size() -> int:
 	return _module_size
 
+
+## Returns the module with the provided identifier.
+##
+## An empty Dictionary is returned when no matching module exists.
 func get_module_by_id(module_id: String) -> Dictionary:
 	for module in _modules_cache:
-		var m: Dictionary = module
-		if m.get("id", "") == module_id:
-			return m
+		if str(module.get("id", "")) == module_id:
+			return module
+
 	return {}
 
-func are_modules_compatible(module_a: Dictionary, module_b: Dictionary, direction: String) -> bool:
+
+## Returns whether two modules can be adjacent in the provided direction.
+##
+## Compatibility is determined by matching openings on opposite module edges.
+func are_modules_compatible(
+	module_a: Dictionary,
+	module_b: Dictionary,
+	direction: String
+) -> bool:
 	match direction:
 		"up":
 			return bool(module_a["up"]) == bool(module_b["down"])
+
 		"right":
 			return bool(module_a["right"]) == bool(module_b["left"])
+
 		"down":
 			return bool(module_a["down"]) == bool(module_b["up"])
+
 		"left":
 			return bool(module_a["left"]) == bool(module_b["right"])
+
 		_:
 			return false
 
-func get_allowed_neighbors(module: Dictionary, direction: String) -> Array:
-	var allowed: Array = []
+
+## Returns all loaded modules compatible with the provided module
+## in the selected direction.
+func get_allowed_neighbors(
+	module: Dictionary,
+	direction: String
+) -> Array[Dictionary]:
+	var allowed_modules: Array[Dictionary] = []
 
 	for candidate in _modules_cache:
-		var candidate_dict: Dictionary = candidate
-		if are_modules_compatible(module, candidate_dict, direction):
-			allowed.append(candidate_dict)
+		if are_modules_compatible(
+			module,
+			candidate,
+			direction
+		):
+			allowed_modules.append(candidate)
 
-	return allowed
+	return allowed_modules
 
+
+## Loads, parses, and validates the WFC module library from JSON.
 func _load_data_from_json() -> void:
-	print("ModuleLibrary: loading JSON from ", MODULES_JSON_PATH)
-
-	_modules_cache = []
+	_modules_cache.clear()
 	_module_size = 0
 
 	if not FileAccess.file_exists(MODULES_JSON_PATH):
-		push_error("ModuleLibrary: JSON file not found: " + MODULES_JSON_PATH)
+		push_error(
+			"ModuleLibrary: JSON file not found: "
+			+ MODULES_JSON_PATH
+		)
 		return
 
-	var file := FileAccess.open(MODULES_JSON_PATH, FileAccess.READ)
+	var file := FileAccess.open(
+		MODULES_JSON_PATH,
+		FileAccess.READ
+	)
+
 	if file == null:
-		push_error("ModuleLibrary: Failed to open JSON file: " + MODULES_JSON_PATH)
+		push_error(
+			"ModuleLibrary: failed to open JSON file: "
+			+ MODULES_JSON_PATH
+		)
 		return
 
 	var json_text: String = file.get_as_text()
 	file.close()
 
-	print("ModuleLibrary: JSON text length = ", json_text.length())
+	var parsed: Variant = JSON.parse_string(json_text)
 
-	var parsed = JSON.parse_string(json_text)
 	if parsed == null:
-		push_error("ModuleLibrary: JSON.parse_string returned null.")
+		push_error(
+			"ModuleLibrary: failed to parse module JSON."
+		)
 		return
 
 	if typeof(parsed) != TYPE_DICTIONARY:
-		push_error("ModuleLibrary: JSON root must be a dictionary, got type " + str(typeof(parsed)))
+		push_error(
+			"ModuleLibrary: JSON root must be a Dictionary."
+		)
 		return
 
 	var root: Dictionary = parsed
-	print("ModuleLibrary: root keys = ", root.keys())
 
 	if not root.has("module_size"):
-		push_error("ModuleLibrary: JSON root has no 'module_size' key.")
+		push_error(
+			"ModuleLibrary: JSON root has no 'module_size' field."
+		)
 		return
 
 	if not root.has("modules"):
-		push_error("ModuleLibrary: JSON root has no 'modules' key.")
+		push_error(
+			"ModuleLibrary: JSON root has no 'modules' field."
+		)
 		return
 
-	var module_size_value = root.get("module_size", 0)
-	print("ModuleLibrary: raw module_size value = ", module_size_value, " type = ", typeof(module_size_value))
+	var module_size_value: Variant = root.get(
+		"module_size",
+		0
+	)
 
-	if typeof(module_size_value) != TYPE_INT and typeof(module_size_value) != TYPE_FLOAT:
-		push_error("ModuleLibrary: 'module_size' must be numeric.")
+	if (
+		typeof(module_size_value) != TYPE_INT
+		and typeof(module_size_value) != TYPE_FLOAT
+	):
+		push_error(
+			"ModuleLibrary: 'module_size' must be numeric."
+		)
 		return
 
 	_module_size = int(module_size_value)
+
 	if _module_size <= 0:
-		push_error("ModuleLibrary: 'module_size' must be > 0.")
+		push_error(
+			"ModuleLibrary: 'module_size' must be greater than zero."
+		)
 		return
 
-	var modules = root.get("modules", [])
-	if typeof(modules) != TYPE_ARRAY:
-		push_error("ModuleLibrary: 'modules' must be an array, got type " + str(typeof(modules)))
+	var modules_value: Variant = root.get(
+		"modules",
+		[]
+	)
+
+	if typeof(modules_value) != TYPE_ARRAY:
+		push_error(
+			"ModuleLibrary: 'modules' must be an Array."
+		)
 		return
 
-	print("ModuleLibrary: raw module entries count = ", modules.size())
+	var modules: Array = modules_value
+	var validated_modules: Array[Dictionary] = []
 
-	var validated: Array = []
-
-	for module_entry in modules:
-		if typeof(module_entry) != TYPE_DICTIONARY:
-			push_warning("ModuleLibrary: Skipping non-dictionary module entry.")
+	for module_value in modules:
+		if typeof(module_value) != TYPE_DICTIONARY:
+			push_warning(
+				"ModuleLibrary: skipping non-Dictionary module entry."
+			)
 			continue
 
-		var module_dict: Dictionary = module_entry
-		if _is_valid_module(module_dict, _module_size):
-			validated.append(module_dict)
-		else:
-			push_warning("ModuleLibrary: Skipping invalid module: " + str(module_dict.get("id", "UNKNOWN")))
+		var module: Dictionary = module_value
 
-	_modules_cache = validated
+		if not _is_valid_module(
+			module,
+			_module_size
+		):
+			push_warning(
+				"ModuleLibrary: skipping invalid module: %s"
+				% str(module.get("id", "UNKNOWN"))
+			)
+			continue
 
-func _is_valid_module(module: Dictionary, module_size: int) -> bool:
-	var required_keys: Array[String] = [
-		"id", "name", "grid", "up", "right", "down", "left", "weight", "tags"
+		validated_modules.append(module)
+
+	_modules_cache = validated_modules
+
+
+## Validates the required fields and tile-grid dimensions of a module.
+func _is_valid_module(
+	module: Dictionary,
+	module_size: int
+) -> bool:
+	const REQUIRED_KEYS: Array[String] = [
+		"id",
+		"name",
+		"grid",
+		"up",
+		"right",
+		"down",
+		"left",
+		"weight",
+		"tags"
 	]
 
-	for key in required_keys:
+	for key in REQUIRED_KEYS:
 		if not module.has(key):
-			print("ModuleLibrary: module missing key ", key, " in ", module)
+			push_warning(
+				"ModuleLibrary: module '%s' is missing required field '%s'."
+				% [
+					str(module.get("id", "UNKNOWN")),
+					key
+				]
+			)
 			return false
 
-	var grid = module["grid"]
-	if typeof(grid) != TYPE_ARRAY:
-		print("ModuleLibrary: module grid is not an array in ", module.get("id", "UNKNOWN"))
+	var grid_value: Variant = module["grid"]
+
+	if typeof(grid_value) != TYPE_ARRAY:
 		return false
+
+	var grid: Array = grid_value
 
 	if grid.size() != module_size:
-		print("ModuleLibrary: module grid size is not ", module_size, " in ", module.get("id", "UNKNOWN"))
 		return false
 
-	for row in grid:
-		if typeof(row) != TYPE_ARRAY:
-			print("ModuleLibrary: module row is not an array in ", module.get("id", "UNKNOWN"))
+	for row_value in grid:
+		if typeof(row_value) != TYPE_ARRAY:
 			return false
+
+		var row: Array = row_value
+
 		if row.size() != module_size:
-			print("ModuleLibrary: module row size is not ", module_size, " in ", module.get("id", "UNKNOWN"))
 			return false
 
 	return true

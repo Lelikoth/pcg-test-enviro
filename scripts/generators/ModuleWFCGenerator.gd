@@ -1,45 +1,126 @@
-extends BaseGenerator
 class_name ModuleWFCGenerator
+extends BaseGenerator
 
-const MODULE_LIBRARY_SCRIPT := preload("res://scripts/generators/ModuleLibrary.gd")
+## Generates maps using a module-based Wave Function Collapse algorithm.
+##
+## The generator operates on a grid of predefined modules loaded from
+## ModuleLibrary. Each cell initially contains all compatible module options.
+## Constraint propagation and weighted collapse progressively reduce these
+## options until a complete layout is obtained.
+##
+## Generated layouts are additionally validated for structural connectivity
+## and minimum semantic composition requirements. Failed attempts may be
+## retried up to the configured limit.
 
-var module_library := ModuleLibrary.new()
+
+const CARDINAL_DIRECTIONS: Array[Vector2i] = [
+	Vector2i.RIGHT,
+	Vector2i.LEFT,
+	Vector2i.DOWN,
+	Vector2i.UP
+]
+
+const DIRECTION_NAMES: Array[String] = [
+	"up",
+	"right",
+	"down",
+	"left"
+]
+
+const DIRECTION_OFFSETS: Array[Vector2i] = [
+	Vector2i.UP,
+	Vector2i.RIGHT,
+	Vector2i.DOWN,
+	Vector2i.LEFT
+]
+
+const INVALID_CELL_POSITION := Vector2i(-1, -1)
+
+const MIN_VALID_FLOOR_COUNT: int = 20
+const MIN_LARGEST_COMPONENT_RATIO: float = 0.8
 
 
+var module_library: ModuleLibrary = ModuleLibrary.new()
+
+
+## Returns the identifier used for this generator in test results and exports.
 func get_algorithm_name() -> String:
 	return "ModuleWFC"
 
 
+## Generates a map using module-based Wave Function Collapse.
+##
+## A generation attempt consists of boundary constraint application,
+## iterative collapse and propagation, structural validation, and composition
+## validation. Failed attempts are retried according to the configured limit.
 func generate_map(config: Dictionary) -> Dictionary:
-	var module_grid_width: int = config.get("wfc_module_grid_width", 8)
-	var module_grid_height: int = config.get("wfc_module_grid_height", 8)
-	var max_retries: int = config.get("wfc_max_retries", 20)
+	var module_grid_width: int = config.get(
+		"wfc_module_grid_width",
+		8
+	)
 
-	var min_small_corridors: int = config.get("wfc_min_small_corridors", 4)
-	var min_medium_rooms: int = config.get("wfc_min_medium_rooms", 2)
-	var min_large_rooms: int = config.get("wfc_min_large_rooms", 1)
+	var module_grid_height: int = config.get(
+		"wfc_module_grid_height",
+		8
+	)
 
-	var keep_only_reachable_area_from_start: bool = config.get("keep_only_reachable_area_from_start", false)
-	var use_random_seed: bool = config.get("random_seed", true)
-	var seed_value: int = config.get("seed", 0)
+	var max_retries: int = config.get(
+		"wfc_max_retries",
+		20
+	)
+
+	var min_small_corridors: int = config.get(
+		"wfc_min_small_corridors",
+		4
+	)
+
+	var min_medium_rooms: int = config.get(
+		"wfc_min_medium_rooms",
+		2
+	)
+
+	var min_large_rooms: int = config.get(
+		"wfc_min_large_rooms",
+		1
+	)
+
+	var keep_only_reachable_area_from_start: bool = config.get(
+		"keep_only_reachable_area_from_start",
+		false
+	)
+
+	var use_random_seed: bool = config.get(
+		"random_seed",
+		true
+	)
+
+	var seed_value: int = config.get(
+		"seed",
+		0
+	)
 
 	var module_size: int = module_library.get_module_size()
+	var available_modules: Array[Dictionary] = (
+		module_library.get_modules()
+	)
 
-	print("ModuleWFC config: grid=", module_grid_width, "x", module_grid_height, ", retries=", max_retries)
-	print("ModuleWFC loaded modules count: ", module_library.get_modules().size())
-	print("ModuleWFC module size: ", module_size)
+	if available_modules.is_empty():
+		push_error(
+			"ModuleWFCGenerator: module library is empty."
+		)
 
-	if module_library.get_modules().is_empty():
-		push_error("ModuleWFC: Module library is empty.")
 		return _fallback_empty_map(
-			module_grid_width * max(1, module_size),
-			module_grid_height * max(1, module_size),
+			module_grid_width * maxi(1, module_size),
+			module_grid_height * maxi(1, module_size),
 			seed_value,
 			"empty_module_library"
 		)
 
 	if module_size <= 0:
-		push_error("ModuleWFC: Invalid module size.")
+		push_error(
+			"ModuleWFCGenerator: invalid module size."
+		)
+
 		return _fallback_empty_map(
 			module_grid_width * 5,
 			module_grid_height * 5,
@@ -48,16 +129,20 @@ func generate_map(config: Dictionary) -> Dictionary:
 		)
 
 	var rng := RandomNumberGenerator.new()
+
 	if use_random_seed:
 		rng.randomize()
 		seed_value = rng.randi()
+
 	rng.seed = seed_value
 
 	var solved_cells: Array = []
-	var success: bool = false
+	var generation_succeeded: bool = false
 	var retries_used: int = 0
 
-	# Last generated collapsed result, even if it failed validation/composition.
+	# Store the most recent fully collapsed layout even when it fails
+	# structural or composition validation. It can be returned for analysis
+	# when all accepted attempts fail.
 	var last_generated_cells: Array = []
 	var last_generated_grid: Array = []
 	var last_generated_valid_layout: bool = false
@@ -66,61 +151,82 @@ func generate_map(config: Dictionary) -> Dictionary:
 
 	for attempt in range(max_retries):
 		retries_used = attempt
-		success = false
 
-		print("ModuleWFC attempt ", attempt + 1, " / ", max_retries)
+		var cells := _create_initial_cells(
+			module_grid_width,
+			module_grid_height
+		)
 
-		var cells: Array = _create_initial_cells(module_grid_width, module_grid_height)
-
-		if not _apply_boundary_constraints(cells, module_grid_width, module_grid_height):
-			print("ModuleWFC boundary constraints failed on attempt ", attempt + 1)
+		if not _apply_boundary_constraints(
+			cells,
+			module_grid_width,
+			module_grid_height
+		):
 			continue
 
-		var collapse_success: bool = _collapse_cells(cells, module_grid_width, module_grid_height, rng)
-		print("ModuleWFC collapse success: ", collapse_success)
+		var collapse_succeeded := _collapse_cells(
+			cells,
+			module_grid_width,
+			module_grid_height,
+			rng
+		)
 
-		if collapse_success:
-			var preview_grid: Array = _build_final_grid(
-				cells,
-				module_grid_width,
-				module_grid_height,
-				module_size
-			)
+		if not collapse_succeeded:
+			continue
 
-			var preview_start: Vector2i = _find_nearest_floor(preview_grid, Vector2i(1, 1))
-			var preview_end: Vector2i = _find_farthest_floor(preview_grid, preview_start)
+		var preview_grid := _build_final_grid(
+			cells,
+			module_grid_width,
+			module_grid_height,
+			module_size
+		)
 
-			var valid_layout: bool = _is_valid_generated_map(preview_grid, preview_start, preview_end)
-			var valid_composition: bool = _has_valid_module_composition(
-				cells,
-				module_grid_width,
-				module_grid_height,
-				min_small_corridors,
-				min_medium_rooms,
-				min_large_rooms
-			)
+		var preview_start := _find_nearest_floor(
+			preview_grid,
+			Vector2i(1, 1)
+		)
 
-			print("ModuleWFC map validation success: ", valid_layout)
-			print("ModuleWFC composition validation success: ", valid_composition)
+		var preview_end := _find_farthest_floor(
+			preview_grid,
+			preview_start
+		)
 
-			# Store the last collapsed result, even if it does not pass final constraints.
-			last_generated_cells = cells.duplicate(true)
-			last_generated_grid = preview_grid.duplicate(true)
-			last_generated_valid_layout = valid_layout
-			last_generated_valid_composition = valid_composition
-			last_generated_attempt = attempt
+		var valid_layout := _is_valid_generated_map(
+			preview_grid,
+			preview_start,
+			preview_end
+		)
 
-			if valid_layout and valid_composition:
-				solved_cells = cells
-				success = true
-				break
+		var valid_composition := _has_valid_module_composition(
+			cells,
+			module_grid_width,
+			module_grid_height,
+			min_small_corridors,
+			min_medium_rooms,
+			min_large_rooms
+		)
 
-	if not success:
-		push_warning("ModuleWFC failed after %d retries." % max_retries)
+		last_generated_cells = cells.duplicate(true)
+		last_generated_grid = preview_grid.duplicate(true)
+		last_generated_valid_layout = valid_layout
+		last_generated_valid_composition = valid_composition
+		last_generated_attempt = attempt
 
-		if not last_generated_cells.is_empty() and not last_generated_grid.is_empty():
-			print("ModuleWFC FAILED: returning last generated map instead of empty fallback.")
+		if valid_layout and valid_composition:
+			solved_cells = cells
+			generation_succeeded = true
+			break
 
+	if not generation_succeeded:
+		push_warning(
+			"ModuleWFCGenerator: generation failed after %d attempts."
+			% max_retries
+		)
+
+		if (
+			not last_generated_cells.is_empty()
+			and not last_generated_grid.is_empty()
+		):
 			return _build_result_from_grid_and_cells(
 				last_generated_grid,
 				last_generated_cells,
@@ -134,21 +240,23 @@ func generate_map(config: Dictionary) -> Dictionary:
 				last_generated_attempt + 1
 			)
 
-		print("ModuleWFC FAILED: no collapsed map available, returning empty fallback.")
-
 		var fallback := _fallback_empty_map(
 			module_grid_width * module_size,
 			module_grid_height * module_size,
 			seed_value,
 			"no_collapsed_map_available"
 		)
+
 		fallback["retry_count"] = retries_used + 1
+
 		return fallback
 
-	var grid: Array = _build_final_grid(solved_cells, module_grid_width, module_grid_height, module_size)
-
-	print("ModuleWFC floor count after build: ", _count_floor_cells(grid))
-	print("ModuleWFC accepted composition counts: ", _count_module_categories(solved_cells, module_grid_width, module_grid_height))
+	var grid := _build_final_grid(
+		solved_cells,
+		module_grid_width,
+		module_grid_height,
+		module_size
+	)
 
 	return _build_result_from_grid_and_cells(
 		grid,
@@ -164,6 +272,7 @@ func generate_map(config: Dictionary) -> Dictionary:
 	)
 
 
+## Creates the common result representation for a generated WFC layout.
 func _build_result_from_grid_and_cells(
 	grid: Array,
 	cells: Array,
@@ -176,12 +285,26 @@ func _build_result_from_grid_and_cells(
 	valid_composition: bool,
 	accepted_attempt: int
 ) -> Dictionary:
-	var start: Vector2i = _find_nearest_floor(grid, Vector2i(1, 1))
-	var end: Vector2i = _find_farthest_floor(grid, start)
+	var start := _find_nearest_floor(
+		grid,
+		Vector2i(1, 1)
+	)
+
+	var end := _find_farthest_floor(
+		grid,
+		start
+	)
 
 	if keep_only_reachable_area_from_start:
-		_keep_only_reachable_from_start(grid, start)
-		end = _find_farthest_floor(grid, start)
+		_keep_only_reachable_from_start(
+			grid,
+			start
+		)
+
+		end = _find_farthest_floor(
+			grid,
+			start
+		)
 
 	return {
 		"grid": grid,
@@ -200,44 +323,65 @@ func _build_result_from_grid_and_cells(
 	}
 
 
-func _create_initial_cells(module_grid_width: int, module_grid_height: int) -> Array:
-	var all_modules: Array = module_library.get_modules()
+## Creates the initial WFC cell grid with every module available as an option.
+func _create_initial_cells(
+	module_grid_width: int,
+	module_grid_height: int
+) -> Array:
+	var all_modules: Array[Dictionary] = module_library.get_modules()
 	var cells: Array = []
 
-	for y in range(module_grid_height):
+	for _y in range(module_grid_height):
 		var row: Array = []
-		for x in range(module_grid_width):
+
+		for _x in range(module_grid_width):
 			row.append({
 				"collapsed": false,
 				"options": all_modules.duplicate(true)
 			})
+
 		cells.append(row)
 
 	return cells
 
 
-func _apply_boundary_constraints(cells: Array, module_grid_width: int, module_grid_height: int) -> bool:
+## Removes module options that would create openings outside the map boundary.
+##
+## Returns false if any cell loses all possible module options.
+func _apply_boundary_constraints(
+	cells: Array,
+	module_grid_width: int,
+	module_grid_height: int
+) -> bool:
 	for y in range(module_grid_height):
 		for x in range(module_grid_width):
 			var filtered_options: Array = []
 			var current_options: Array = cells[y][x]["options"]
 
-			for option in current_options:
-				var module: Dictionary = option
+			for option_value in current_options:
+				var module: Dictionary = option_value
 
 				if y == 0 and bool(module["up"]):
 					continue
-				if y == module_grid_height - 1 and bool(module["down"]):
+
+				if (
+					y == module_grid_height - 1
+					and bool(module["down"])
+				):
 					continue
+
 				if x == 0 and bool(module["left"]):
 					continue
-				if x == module_grid_width - 1 and bool(module["right"]):
+
+				if (
+					x == module_grid_width - 1
+					and bool(module["right"])
+				):
 					continue
 
 				filtered_options.append(module)
 
 			if filtered_options.is_empty():
-				print("ModuleWFC boundary constraint removed all options at cell ", Vector2i(x, y))
 				return false
 
 			cells[y][x]["options"] = filtered_options
@@ -248,153 +392,323 @@ func _apply_boundary_constraints(cells: Array, module_grid_width: int, module_gr
 	return true
 
 
-func _collapse_cells(cells: Array, module_grid_width: int, module_grid_height: int, rng: RandomNumberGenerator) -> bool:
-	if not _propagate_all(cells, module_grid_width, module_grid_height):
+## Collapses cells until the WFC grid is solved or a contradiction occurs.
+## Collapses cells until the WFC grid is solved or a contradiction occurs.
+func _collapse_cells(
+	cells: Array,
+	module_grid_width: int,
+	module_grid_height: int,
+	rng: RandomNumberGenerator
+) -> bool:
+	if not _propagate_all(
+		cells,
+		module_grid_width,
+		module_grid_height
+	):
 		return false
 
 	while true:
-		var next_pos: Vector2i = _find_lowest_entropy_cell(cells, module_grid_width, module_grid_height)
-		if next_pos == Vector2i(-1, -1):
+		var next_position := _find_lowest_entropy_cell(
+			cells,
+			module_grid_width,
+			module_grid_height
+		)
+
+		if next_position == INVALID_CELL_POSITION:
 			return true
 
-		var cell: Dictionary = cells[next_pos.y][next_pos.x]
+		var cell: Dictionary = cells[
+			next_position.y
+		][next_position.x]
+
 		var options: Array = cell["options"]
 
 		if options.is_empty():
 			return false
 
-		var chosen_module: Dictionary = _choose_weighted_module(options, rng)
+		var chosen_module := _choose_weighted_module(
+			options,
+			rng
+		)
 
-		cells[next_pos.y][next_pos.x]["options"] = [chosen_module]
-		cells[next_pos.y][next_pos.x]["collapsed"] = true
+		cells[next_position.y][next_position.x]["options"] = [
+			chosen_module
+		]
 
-		if not _propagate_from(cells, module_grid_width, module_grid_height, next_pos):
+		cells[next_position.y][next_position.x]["collapsed"] = true
+
+		if not _propagate_from(
+			cells,
+			module_grid_width,
+			module_grid_height,
+			next_position
+		):
 			return false
 
-	return true
+	# Required by GDScript's static return-path analysis.
+	return false
+	if not _propagate_all(
+		cells,
+		module_grid_width,
+		module_grid_height
+	):
+		return false
+
+	while true:
+		var next_position := _find_lowest_entropy_cell(
+			cells,
+			module_grid_width,
+			module_grid_height
+		)
+
+		if next_position == INVALID_CELL_POSITION:
+			return true
+
+		var cell: Dictionary = cells[
+			next_position.y
+		][next_position.x]
+
+		var options: Array = cell["options"]
+
+		if options.is_empty():
+			return false
+
+		var chosen_module := _choose_weighted_module(
+			options,
+			rng
+		)
+
+		cells[next_position.y][next_position.x]["options"] = [
+			chosen_module
+		]
+
+		cells[next_position.y][next_position.x]["collapsed"] = true
+
+		if not _propagate_from(
+			cells,
+			module_grid_width,
+			module_grid_height,
+			next_position
+		):
+			return false
 
 
-func _find_lowest_entropy_cell(cells: Array, module_grid_width: int, module_grid_height: int) -> Vector2i:
-	var best_pos: Vector2i = Vector2i(-1, -1)
-	var best_entropy: float = INF
+## Finds the unresolved cell with the smallest number of remaining options.
+func _find_lowest_entropy_cell(
+	cells: Array,
+	module_grid_width: int,
+	module_grid_height: int
+) -> Vector2i:
+	var best_position := INVALID_CELL_POSITION
+	var lowest_option_count: int = 2147483647
 
 	for y in range(module_grid_height):
 		for x in range(module_grid_width):
 			var cell: Dictionary = cells[y][x]
 			var options: Array = cell["options"]
-			var option_count: int = options.size()
+			var option_count := options.size()
 
 			if option_count <= 1:
 				continue
 
-			if option_count < best_entropy:
-				best_entropy = option_count
-				best_pos = Vector2i(x, y)
+			if option_count < lowest_option_count:
+				lowest_option_count = option_count
+				best_position = Vector2i(x, y)
 
-	return best_pos
+	return best_position
 
 
-func _choose_weighted_module(options: Array, rng: RandomNumberGenerator) -> Dictionary:
+## Selects one module according to the weights stored in module definitions.
+func _choose_weighted_module(
+	options: Array,
+	rng: RandomNumberGenerator
+) -> Dictionary:
 	var total_weight: float = 0.0
 
-	for option in options:
-		var module: Dictionary = option
-		total_weight += float(module.get("weight", 1.0))
+	for option_value in options:
+		var module: Dictionary = option_value
 
-	var roll: float = rng.randf() * total_weight
-	var current: float = 0.0
+		total_weight += float(
+			module.get("weight", 1.0)
+		)
 
-	for option in options:
-		var module: Dictionary = option
-		current += float(module.get("weight", 1.0))
-		if roll <= current:
+	var roll := rng.randf() * total_weight
+	var current_weight: float = 0.0
+
+	for option_value in options:
+		var module: Dictionary = option_value
+
+		current_weight += float(
+			module.get("weight", 1.0)
+		)
+
+		if roll <= current_weight:
 			return module
 
-	return options[options.size() - 1]
+	var fallback_module: Dictionary = options[
+		options.size() - 1
+	]
+
+	return fallback_module
 
 
-func _propagate_all(cells: Array, module_grid_width: int, module_grid_height: int) -> bool:
-	var queue: Array = []
+## Propagates constraints through the entire module grid.
+func _propagate_all(
+	cells: Array,
+	module_grid_width: int,
+	module_grid_height: int
+) -> bool:
+	var queue: Array[Vector2i] = []
 
 	for y in range(module_grid_height):
 		for x in range(module_grid_width):
 			queue.append(Vector2i(x, y))
 
-	return _process_propagation_queue(cells, module_grid_width, module_grid_height, queue)
+	return _process_propagation_queue(
+		cells,
+		module_grid_width,
+		module_grid_height,
+		queue
+	)
 
 
-func _propagate_from(cells: Array, module_grid_width: int, module_grid_height: int, start_pos: Vector2i) -> bool:
-	var queue: Array = [start_pos]
-	return _process_propagation_queue(cells, module_grid_width, module_grid_height, queue)
+## Propagates constraints starting from one changed cell.
+func _propagate_from(
+	cells: Array,
+	module_grid_width: int,
+	module_grid_height: int,
+	start_position: Vector2i
+) -> bool:
+	var queue: Array[Vector2i] = [
+		start_position
+	]
+
+	return _process_propagation_queue(
+		cells,
+		module_grid_width,
+		module_grid_height,
+		queue
+	)
 
 
-func _process_propagation_queue(cells: Array, module_grid_width: int, module_grid_height: int, queue: Array) -> bool:
-	var directions := {
-		"up": Vector2i(0, -1),
-		"right": Vector2i(1, 0),
-		"down": Vector2i(0, 1),
-		"left": Vector2i(-1, 0)
-	}
+## Processes WFC constraint propagation until no additional options are removed.
+func _process_propagation_queue(
+	cells: Array,
+	module_grid_width: int,
+	module_grid_height: int,
+	queue: Array[Vector2i]
+) -> bool:
+	var head: int = 0
 
-	while queue.size() > 0:
-		var current: Vector2i = queue.pop_front()
-		var current_cell: Dictionary = cells[current.y][current.x]
+	while head < queue.size():
+		var current := queue[head]
+		head += 1
+
+		var current_cell: Dictionary = cells[
+			current.y
+		][current.x]
+
 		var current_options: Array = current_cell["options"]
 
-		for direction in directions.keys():
-			var dir_name: String = direction
-			var offset: Vector2i = directions[dir_name]
-			var neighbor_pos: Vector2i = current + offset
+		for direction_index in range(DIRECTION_NAMES.size()):
+			var direction_name: String = DIRECTION_NAMES[
+				direction_index
+			]
 
-			if not _is_inside_module_grid(neighbor_pos, module_grid_width, module_grid_height):
+			var offset: Vector2i = DIRECTION_OFFSETS[
+				direction_index
+			]
+
+			var neighbor_position := current + offset
+
+			if not _is_inside_module_grid(
+				neighbor_position,
+				module_grid_width,
+				module_grid_height
+			):
 				continue
 
-			var neighbor_cell: Dictionary = cells[neighbor_pos.y][neighbor_pos.x]
-			var neighbor_options: Array = neighbor_cell["options"]
+			var neighbor_cell: Dictionary = cells[
+				neighbor_position.y
+			][neighbor_position.x]
 
+			var neighbor_options: Array = neighbor_cell["options"]
 			var filtered_neighbor_options: Array = []
 
-			for neighbor_option in neighbor_options:
-				var neighbor_module: Dictionary = neighbor_option
-				var compatible: bool = false
+			for neighbor_option_value in neighbor_options:
+				var neighbor_module: Dictionary = (
+					neighbor_option_value
+				)
 
-				for current_option in current_options:
-					var current_module: Dictionary = current_option
-					if module_library.are_modules_compatible(current_module, neighbor_module, dir_name):
+				var compatible := false
+
+				for current_option_value in current_options:
+					var current_module: Dictionary = (
+						current_option_value
+					)
+
+					if module_library.are_modules_compatible(
+						current_module,
+						neighbor_module,
+						direction_name
+					):
 						compatible = true
 						break
 
 				if compatible:
-					filtered_neighbor_options.append(neighbor_module)
+					filtered_neighbor_options.append(
+						neighbor_module
+					)
 
 			if filtered_neighbor_options.is_empty():
 				return false
 
-			if filtered_neighbor_options.size() < neighbor_options.size():
-				cells[neighbor_pos.y][neighbor_pos.x]["options"] = filtered_neighbor_options
+			if (
+				filtered_neighbor_options.size()
+				< neighbor_options.size()
+			):
+				cells[
+					neighbor_position.y
+				][neighbor_position.x]["options"] = (
+					filtered_neighbor_options
+				)
 
 				if filtered_neighbor_options.size() == 1:
-					cells[neighbor_pos.y][neighbor_pos.x]["collapsed"] = true
+					cells[
+						neighbor_position.y
+					][neighbor_position.x]["collapsed"] = true
 
-				queue.append(neighbor_pos)
+				queue.append(neighbor_position)
 
 	return true
 
 
-func _build_final_grid(cells: Array, module_grid_width: int, module_grid_height: int, module_size: int) -> Array:
-	var final_width: int = module_grid_width * module_size
-	var final_height: int = module_grid_height * module_size
+## Converts the collapsed module grid to the common binary tile grid.
+func _build_final_grid(
+	cells: Array,
+	module_grid_width: int,
+	module_grid_height: int,
+	module_size: int
+) -> Array:
+	var final_width := module_grid_width * module_size
+	var final_height := module_grid_height * module_size
+
 	var grid: Array = []
 
-	for y in range(final_height):
+	for _y in range(final_height):
 		var row: Array = []
-		for x in range(final_width):
+
+		for _x in range(final_width):
 			row.append(MapTypes.WALL)
+
 		grid.append(row)
 
 	for module_y in range(module_grid_height):
 		for module_x in range(module_grid_width):
-			var cell: Dictionary = cells[module_y][module_x]
+			var cell: Dictionary = cells[
+				module_y
+			][module_x]
+
 			var options: Array = cell["options"]
 
 			if options.is_empty():
@@ -405,9 +719,19 @@ func _build_final_grid(cells: Array, module_grid_width: int, module_grid_height:
 
 			for local_y in range(module_size):
 				for local_x in range(module_size):
-					var world_x: int = module_x * module_size + local_x
-					var world_y: int = module_y * module_size + local_y
-					var value: int = module_grid[local_y][local_x]
+					var world_x := (
+						module_x * module_size
+						+ local_x
+					)
+
+					var world_y := (
+						module_y * module_size
+						+ local_y
+					)
+
+					var value := int(
+						module_grid[local_y][local_x]
+					)
 
 					if value == 0:
 						grid[world_y][world_x] = MapTypes.FLOOR
@@ -417,31 +741,56 @@ func _build_final_grid(cells: Array, module_grid_width: int, module_grid_height:
 	return grid
 
 
-func _is_inside_module_grid(pos: Vector2i, width: int, height: int) -> bool:
-	return pos.x >= 0 and pos.x < width and pos.y >= 0 and pos.y < height
+## Returns whether a module-grid position lies within its bounds.
+func _is_inside_module_grid(
+	position: Vector2i,
+	width: int,
+	height: int
+) -> bool:
+	return (
+		position.x >= 0
+		and position.x < width
+		and position.y >= 0
+		and position.y < height
+	)
 
 
-func _is_valid_generated_map(grid: Array, start: Vector2i, end: Vector2i) -> bool:
-	var floor_count: int = _count_floor_cells(grid)
-	if floor_count < 20:
-		print("ModuleWFC validation failed: too few floor cells = ", floor_count)
+## Validates the structural properties required from a collapsed WFC layout.
+func _is_valid_generated_map(
+	grid: Array,
+	start: Vector2i,
+	end: Vector2i
+) -> bool:
+	var floor_count := _count_floor_cells(grid)
+
+	if floor_count < MIN_VALID_FLOOR_COUNT:
 		return false
 
-	var path_length: int = _find_path_length(grid, start, end)
+	var path_length := _find_path_length(
+		grid,
+		start,
+		end
+	)
+
 	if path_length == -1:
-		print("ModuleWFC validation failed: no path from start to end")
 		return false
 
-	var largest_component_size: int = _largest_connected_floor_component(grid)
-	var largest_component_ratio: float = float(largest_component_size) / max(1.0, float(floor_count))
+	var largest_component_size := (
+		_largest_connected_floor_component(grid)
+	)
 
-	if largest_component_ratio < 0.8:
-		print("ModuleWFC validation failed: largest component ratio too small = ", largest_component_ratio)
-		return false
+	var largest_component_ratio := (
+		float(largest_component_size)
+		/ maxf(1.0, float(floor_count))
+	)
 
-	return true
+	return (
+		largest_component_ratio
+		>= MIN_LARGEST_COMPONENT_RATIO
+	)
 
 
+## Checks whether a collapsed layout satisfies minimum module composition.
 func _has_valid_module_composition(
 	cells: Array,
 	module_grid_width: int,
@@ -450,28 +799,37 @@ func _has_valid_module_composition(
 	min_medium_rooms: int,
 	min_large_rooms: int
 ) -> bool:
-	var counts: Dictionary = _count_module_categories(cells, module_grid_width, module_grid_height)
+	var counts := _count_module_categories(
+		cells,
+		module_grid_width,
+		module_grid_height
+	)
 
-	var small_corridors: int = counts.get("small_corridors", 0)
-	var medium_rooms: int = counts.get("medium_rooms", 0)
-	var large_rooms: int = counts.get("large_rooms", 0)
+	var small_corridors := int(
+		counts.get("small_corridors", 0)
+	)
 
-	if small_corridors < min_small_corridors:
-		print("ModuleWFC composition failed: small corridors = ", small_corridors, ", required = ", min_small_corridors)
-		return false
+	var medium_rooms := int(
+		counts.get("medium_rooms", 0)
+	)
 
-	if medium_rooms < min_medium_rooms:
-		print("ModuleWFC composition failed: medium rooms = ", medium_rooms, ", required = ", min_medium_rooms)
-		return false
+	var large_rooms := int(
+		counts.get("large_rooms", 0)
+	)
 
-	if large_rooms < min_large_rooms:
-		print("ModuleWFC composition failed: large rooms = ", large_rooms, ", required = ", min_large_rooms)
-		return false
+	return (
+		small_corridors >= min_small_corridors
+		and medium_rooms >= min_medium_rooms
+		and large_rooms >= min_large_rooms
+	)
 
-	return true
 
-
-func _count_module_categories(cells: Array, module_grid_width: int, module_grid_height: int) -> Dictionary:
+## Counts selected semantic module categories in a collapsed layout.
+func _count_module_categories(
+	cells: Array,
+	module_grid_width: int,
+	module_grid_height: int
+) -> Dictionary:
 	var counts := {
 		"small_corridors": 0,
 		"medium_rooms": 0,
@@ -488,223 +846,329 @@ func _count_module_categories(cells: Array, module_grid_width: int, module_grid_
 
 			var module: Dictionary = options[0]
 			var tags: Array = module.get("tags", [])
-			var scale_class: String = str(module.get("scale_class", ""))
+			var scale_class := str(
+				module.get("scale_class", "")
+			)
 
-			if tags.has("corridor") and scale_class == "small":
-				counts["small_corridors"] += 1
+			if (
+				tags.has("corridor")
+				and scale_class == "small"
+			):
+				counts["small_corridors"] = (
+					int(counts["small_corridors"]) + 1
+				)
 
-			if tags.has("room") and scale_class == "medium":
-				counts["medium_rooms"] += 1
+			if (
+				tags.has("room")
+				and scale_class == "medium"
+			):
+				counts["medium_rooms"] = (
+					int(counts["medium_rooms"]) + 1
+				)
 
-			if tags.has("room") and scale_class == "large":
-				counts["large_rooms"] += 1
+			if (
+				tags.has("room")
+				and scale_class == "large"
+			):
+				counts["large_rooms"] = (
+					int(counts["large_rooms"]) + 1
+				)
 
 	return counts
 
 
-func _find_path_length(grid: Array, start: Vector2i, end: Vector2i) -> int:
-	if not _is_inside_grid(grid, start) or not _is_inside_grid(grid, end):
-		return -1
-	if grid[start.y][start.x] != MapTypes.FLOOR or grid[end.y][end.x] != MapTypes.FLOOR:
+## Returns the shortest four-directional path length between two floor tiles.
+func _find_path_length(
+	grid: Array,
+	start: Vector2i,
+	end: Vector2i
+) -> int:
+	if (
+		not _is_inside_grid(grid, start)
+		or not _is_inside_grid(grid, end)
+	):
 		return -1
 
-	var visited := {}
-	var queue: Array = [{
-		"pos": start,
-		"dist": 0
+	if (
+		grid[start.y][start.x] != MapTypes.FLOOR
+		or grid[end.y][end.x] != MapTypes.FLOOR
+	):
+		return -1
+
+	var queue: Array[Dictionary] = [{
+		"position": start,
+		"distance": 0
 	}]
-	visited[_pos_key(start)] = true
 
-	var directions: Array = [
-		Vector2i(1, 0),
-		Vector2i(-1, 0),
-		Vector2i(0, 1),
-		Vector2i(0, -1)
-	]
+	var head: int = 0
+	var visited: Dictionary = {}
 
-	while queue.size() > 0:
-		var current_entry: Dictionary = queue.pop_front()
-		var current: Vector2i = current_entry["pos"]
-		var dist: int = current_entry["dist"]
+	visited[start] = true
+
+	while head < queue.size():
+		var current_entry: Dictionary = queue[head]
+		head += 1
+
+		var current: Vector2i = current_entry["position"]
+		var distance: int = current_entry["distance"]
 
 		if current == end:
-			return dist
+			return distance
 
-		for dir in directions:
-			var d: Vector2i = dir
-			var next: Vector2i = current + d
-			var key: String = _pos_key(next)
+		for direction in CARDINAL_DIRECTIONS:
+			var next_position := current + direction
 
-			if not _is_inside_grid(grid, next):
-				continue
-			if visited.has(key):
-				continue
-			if grid[next.y][next.x] != MapTypes.FLOOR:
+			if visited.has(next_position):
 				continue
 
-			visited[key] = true
+			if not _is_inside_grid(
+				grid,
+				next_position
+			):
+				continue
+
+			if (
+				grid[next_position.y][next_position.x]
+				!= MapTypes.FLOOR
+			):
+				continue
+
+			visited[next_position] = true
+
 			queue.append({
-				"pos": next,
-				"dist": dist + 1
+				"position": next_position,
+				"distance": distance + 1
 			})
 
 	return -1
 
 
-func _largest_connected_floor_component(grid: Array) -> int:
-	var visited := {}
-	var best_size: int = 0
+## Returns the size of the largest connected floor component.
+func _largest_connected_floor_component(
+	grid: Array
+) -> int:
+	var visited: Dictionary = {}
+	var largest_component_size: int = 0
 
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
-			var pos := Vector2i(x, y)
-			var key := _pos_key(pos)
+			var position := Vector2i(x, y)
 
-			if visited.has(key):
+			if visited.has(position):
 				continue
+
 			if grid[y][x] != MapTypes.FLOOR:
 				continue
 
-			var component_size: int = _flood_fill_floor_component(grid, pos, visited)
-			if component_size > best_size:
-				best_size = component_size
+			var component_size := _flood_fill_floor_component(
+				grid,
+				position,
+				visited
+			)
 
-	return best_size
+			largest_component_size = maxi(
+				largest_component_size,
+				component_size
+			)
+
+	return largest_component_size
 
 
-func _flood_fill_floor_component(grid: Array, start: Vector2i, visited: Dictionary) -> int:
-	var queue: Array = [start]
-	visited[_pos_key(start)] = true
-	var size: int = 0
+## Flood-fills one connected floor component and returns its size.
+func _flood_fill_floor_component(
+	grid: Array,
+	start: Vector2i,
+	visited: Dictionary
+) -> int:
+	var queue: Array[Vector2i] = [start]
+	var head: int = 0
+	var component_size: int = 0
 
-	var directions: Array = [
-		Vector2i(1, 0),
-		Vector2i(-1, 0),
-		Vector2i(0, 1),
-		Vector2i(0, -1)
-	]
+	visited[start] = true
 
-	while queue.size() > 0:
-		var current: Vector2i = queue.pop_front()
-		size += 1
+	while head < queue.size():
+		var current := queue[head]
+		head += 1
 
-		for dir in directions:
-			var d: Vector2i = dir
-			var next: Vector2i = current + d
-			var key: String = _pos_key(next)
+		component_size += 1
 
-			if not _is_inside_grid(grid, next):
+		for direction in CARDINAL_DIRECTIONS:
+			var next_position := current + direction
+
+			if visited.has(next_position):
 				continue
-			if visited.has(key):
+
+			if not _is_inside_grid(
+				grid,
+				next_position
+			):
 				continue
-			if grid[next.y][next.x] != MapTypes.FLOOR:
+
+			if (
+				grid[next_position.y][next_position.x]
+				!= MapTypes.FLOOR
+			):
 				continue
 
-			visited[key] = true
-			queue.append(next)
+			visited[next_position] = true
+			queue.append(next_position)
 
-	return size
+	return component_size
 
 
-func _find_nearest_floor(grid: Array, origin: Vector2i) -> Vector2i:
-	if _is_inside_grid(grid, origin) and grid[origin.y][origin.x] == MapTypes.FLOOR:
+## Finds the floor tile nearest to the provided origin.
+func _find_nearest_floor(
+	grid: Array,
+	origin: Vector2i
+) -> Vector2i:
+	if (
+		_is_inside_grid(grid, origin)
+		and grid[origin.y][origin.x] == MapTypes.FLOOR
+	):
 		return origin
 
-	var best: Vector2i = origin
-	var best_dist: float = INF
+	var nearest_position := origin
+	var nearest_distance: float = INF
 
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
-			if grid[y][x] == MapTypes.FLOOR:
-				var candidate: Vector2i = Vector2i(x, y)
-				var dist: float = origin.distance_squared_to(candidate)
-				if dist < best_dist:
-					best_dist = dist
-					best = candidate
+			if grid[y][x] != MapTypes.FLOOR:
+				continue
 
-	return best
+			var candidate := Vector2i(x, y)
+
+			var distance: float = (
+				origin.distance_squared_to(candidate)
+			)
+
+			if distance < nearest_distance:
+				nearest_distance = distance
+				nearest_position = candidate
+
+	return nearest_position
 
 
-func _find_farthest_floor(grid: Array, origin: Vector2i) -> Vector2i:
-	var best: Vector2i = origin
-	var best_dist: float = -1.0
+## Finds the floor tile farthest from the provided origin.
+func _find_farthest_floor(
+	grid: Array,
+	origin: Vector2i
+) -> Vector2i:
+	var farthest_position := origin
+	var farthest_distance: float = -1.0
 
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
-			if grid[y][x] == MapTypes.FLOOR:
-				var candidate: Vector2i = Vector2i(x, y)
-				var dist: float = origin.distance_squared_to(candidate)
-				if dist > best_dist:
-					best_dist = dist
-					best = candidate
+			if grid[y][x] != MapTypes.FLOOR:
+				continue
 
-	return best
+			var candidate := Vector2i(x, y)
+
+			var distance: float = (
+				origin.distance_squared_to(candidate)
+			)
+
+			if distance > farthest_distance:
+				farthest_distance = distance
+				farthest_position = candidate
+
+	return farthest_position
 
 
-func _keep_only_reachable_from_start(grid: Array, start: Vector2i) -> void:
+## Removes floor tiles that are not reachable from the selected start tile.
+func _keep_only_reachable_from_start(
+	grid: Array,
+	start: Vector2i
+) -> void:
 	if not _is_inside_grid(grid, start):
 		return
+
 	if grid[start.y][start.x] != MapTypes.FLOOR:
 		return
 
-	var visited := {}
-	var queue: Array = [start]
-	visited[_pos_key(start)] = true
+	var visited: Dictionary = {}
+	var queue: Array[Vector2i] = [start]
+	var head: int = 0
 
-	var directions: Array = [
-		Vector2i(1, 0),
-		Vector2i(-1, 0),
-		Vector2i(0, 1),
-		Vector2i(0, -1)
-	]
+	visited[start] = true
 
-	while queue.size() > 0:
-		var current: Vector2i = queue.pop_front()
+	while head < queue.size():
+		var current := queue[head]
+		head += 1
 
-		for dir in directions:
-			var d: Vector2i = dir
-			var next: Vector2i = current + d
-			var key: String = _pos_key(next)
+		for direction in CARDINAL_DIRECTIONS:
+			var next_position := current + direction
 
-			if _is_inside_grid(grid, next) and not visited.has(key):
-				if grid[next.y][next.x] == MapTypes.FLOOR:
-					visited[key] = true
-					queue.append(next)
+			if visited.has(next_position):
+				continue
+
+			if not _is_inside_grid(
+				grid,
+				next_position
+			):
+				continue
+
+			if (
+				grid[next_position.y][next_position.x]
+				!= MapTypes.FLOOR
+			):
+				continue
+
+			visited[next_position] = true
+			queue.append(next_position)
 
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
-			if grid[y][x] == MapTypes.FLOOR:
-				var pos: Vector2i = Vector2i(x, y)
-				if not visited.has(_pos_key(pos)):
-					grid[y][x] = MapTypes.WALL
+			if grid[y][x] != MapTypes.FLOOR:
+				continue
+
+			var position := Vector2i(x, y)
+
+			if not visited.has(position):
+				grid[y][x] = MapTypes.WALL
 
 
-func _is_inside_grid(grid: Array, pos: Vector2i) -> bool:
-	return pos.y >= 0 and pos.y < grid.size() and pos.x >= 0 and pos.x < grid[0].size()
+## Returns whether a position lies within the binary tile grid.
+func _is_inside_grid(
+	grid: Array,
+	position: Vector2i
+) -> bool:
+	if grid.is_empty():
+		return false
+
+	if position.y < 0 or position.y >= grid.size():
+		return false
+
+	return (
+		position.x >= 0
+		and position.x < grid[position.y].size()
+	)
 
 
-func _pos_key(pos: Vector2i) -> String:
-	return "%d_%d" % [pos.x, pos.y]
-
-
+## Counts all floor tiles in the binary tile grid.
 func _count_floor_cells(grid: Array) -> int:
-	var count: int = 0
+	var floor_count: int = 0
 
 	for y in range(grid.size()):
 		for x in range(grid[y].size()):
 			if grid[y][x] == MapTypes.FLOOR:
-				count += 1
+				floor_count += 1
 
-	return count
+	return floor_count
 
 
-func _fallback_empty_map(width: int, height: int, seed_value: int, reason: String = "empty_fallback") -> Dictionary:
+## Returns an all-wall result when WFC cannot produce a collapsed map.
+func _fallback_empty_map(
+	width: int,
+	height: int,
+	seed_value: int,
+	reason: String = "empty_fallback"
+) -> Dictionary:
 	var grid: Array = []
 
-	for y in range(height):
+	for _y in range(height):
 		var row: Array = []
 
-		for x in range(width):
+		for _x in range(width):
 			row.append(MapTypes.WALL)
 
 		grid.append(row)

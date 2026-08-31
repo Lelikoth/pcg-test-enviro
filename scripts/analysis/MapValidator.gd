@@ -1,163 +1,203 @@
-extends RefCounted
 class_name MapValidator
+extends RefCounted
+
+## Provides common structural validation and pathfinding operations for maps.
+##
+## Walkability and connectivity are evaluated using four-directional movement
+## without diagonal traversal.
 
 
-const DIRECTIONS_4: Array[Vector2i] = [
-	Vector2i(1, 0),
-	Vector2i(-1, 0),
-	Vector2i(0, 1),
-	Vector2i(0, -1)
+const CARDINAL_DIRECTIONS: Array[Vector2i] = [
+	Vector2i.RIGHT,
+	Vector2i.LEFT,
+	Vector2i.DOWN,
+	Vector2i.UP
 ]
 
 
-func is_inside(grid: Array, pos: Vector2i) -> bool:
+## Returns whether the provided position lies within the grid bounds.
+func is_inside(
+	grid: Array,
+	position: Vector2i
+) -> bool:
+	if grid.is_empty():
+		return false
+
+	if position.y < 0 or position.y >= grid.size():
+		return false
+
 	return (
-		pos.y >= 0
-		and pos.y < grid.size()
-		and pos.x >= 0
-		and grid.size() > 0
-		and pos.x < grid[0].size()
+		position.x >= 0
+		and position.x < grid[position.y].size()
 	)
 
 
-func is_walkable(grid: Array, pos: Vector2i) -> bool:
-	if not is_inside(grid, pos):
+## Returns whether the provided position contains a walkable floor tile.
+func is_walkable(
+	grid: Array,
+	position: Vector2i
+) -> bool:
+	if not is_inside(grid, position):
 		return false
 
-	return grid[pos.y][pos.x] == MapTypes.FLOOR
+	return grid[position.y][position.x] == MapTypes.FLOOR
 
 
-func find_path_length(grid: Array, start: Vector2i, goal: Vector2i) -> int:
+## Returns the length of the shortest walkable path between two positions.
+##
+## Breadth-first search is used with four-directional movement. A value of -1
+## is returned when either endpoint is invalid or no path exists.
+func find_path_length(
+	grid: Array,
+	start: Vector2i,
+	goal: Vector2i
+) -> int:
 	if not is_walkable(grid, start) or not is_walkable(grid, goal):
 		return -1
 
 	var queue: Array[Dictionary] = [{
-		"pos": start,
-		"dist": 0
+		"position": start,
+		"distance": 0
 	}]
-	var head: int = 0
-	var visited := {}
 
-	visited[_key(start)] = true
+	var head := 0
+	var visited: Dictionary = {}
+
+	visited[start] = true
 
 	while head < queue.size():
 		var current: Dictionary = queue[head]
 		head += 1
 
-		var pos: Vector2i = current["pos"]
-		var dist: int = current["dist"]
+		var position: Vector2i = current["position"]
+		var distance: int = current["distance"]
 
-		if pos == goal:
-			return dist
+		if position == goal:
+			return distance
 
-		for dir in DIRECTIONS_4:
-			var next: Vector2i = pos + dir
-			var key := _key(next)
+		for direction in CARDINAL_DIRECTIONS:
+			var next_position := position + direction
 
-			if visited.has(key):
+			if visited.has(next_position):
 				continue
 
-			if not is_walkable(grid, next):
+			if not is_walkable(grid, next_position):
 				continue
 
-			visited[key] = true
+			visited[next_position] = true
+
 			queue.append({
-				"pos": next,
-				"dist": dist + 1
+				"position": next_position,
+				"distance": distance + 1
 			})
 
 	return -1
 
 
-func has_path(grid: Array, start: Vector2i, goal: Vector2i) -> bool:
-	return find_path_length(grid, start, goal) != -1
+## Returns whether a walkable path exists between two positions.
+func has_path(
+	grid: Array,
+	start: Vector2i,
+	goal: Vector2i
+) -> bool:
+	return find_path_length(grid, start, goal) >= 0
 
 
-func reachable_cells_from(grid: Array, start: Vector2i) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
+## Returns all floor tiles reachable from the provided start position.
+##
+## Tiles are discovered using breadth-first search and four-directional
+## movement.
+func reachable_cells_from(
+	grid: Array,
+	start: Vector2i
+) -> Array[Vector2i]:
+	var reachable_cells: Array[Vector2i] = []
 
 	if not is_walkable(grid, start):
-		return result
+		return reachable_cells
 
 	var queue: Array[Vector2i] = [start]
-	var head: int = 0
-	var visited := {}
+	var head := 0
+	var visited: Dictionary = {}
 
-	visited[_key(start)] = true
+	visited[start] = true
 
 	while head < queue.size():
-		var current: Vector2i = queue[head]
+		var current_position := queue[head]
 		head += 1
 
-		result.append(current)
+		reachable_cells.append(current_position)
 
-		for dir in DIRECTIONS_4:
-			var next: Vector2i = current + dir
-			var key := _key(next)
+		for direction in CARDINAL_DIRECTIONS:
+			var next_position := current_position + direction
 
-			if visited.has(key):
+			if visited.has(next_position):
 				continue
 
-			if not is_walkable(grid, next):
+			if not is_walkable(grid, next_position):
 				continue
 
-			visited[key] = true
-			queue.append(next)
+			visited[next_position] = true
+			queue.append(next_position)
 
-	return result
+	return reachable_cells
 
 
-func farthest_reachable_from(grid: Array, start: Vector2i) -> Dictionary:
+## Finds the reachable floor tile with the greatest shortest-path distance
+## from the provided start position.
+##
+## Returns distance -1 when the start position is not walkable.
+func farthest_reachable_from(
+	grid: Array,
+	start: Vector2i
+) -> Dictionary:
 	if not is_walkable(grid, start):
 		return {
-			"pos": start,
-			"dist": -1
+			"position": start,
+			"distance": -1
 		}
 
 	var queue: Array[Dictionary] = [{
-		"pos": start,
-		"dist": 0
+		"position": start,
+		"distance": 0
 	}]
-	var head: int = 0
-	var visited := {}
 
-	visited[_key(start)] = true
+	var head := 0
+	var visited: Dictionary = {}
 
-	var best_pos := start
-	var best_dist: int = 0
+	visited[start] = true
+
+	var farthest_position := start
+	var farthest_distance := 0
 
 	while head < queue.size():
 		var current: Dictionary = queue[head]
 		head += 1
 
-		var pos: Vector2i = current["pos"]
-		var dist: int = current["dist"]
+		var position: Vector2i = current["position"]
+		var distance: int = current["distance"]
 
-		if dist > best_dist:
-			best_dist = dist
-			best_pos = pos
+		if distance > farthest_distance:
+			farthest_distance = distance
+			farthest_position = position
 
-		for dir in DIRECTIONS_4:
-			var next: Vector2i = pos + dir
-			var key := _key(next)
+		for direction in CARDINAL_DIRECTIONS:
+			var next_position := position + direction
 
-			if visited.has(key):
+			if visited.has(next_position):
 				continue
 
-			if not is_walkable(grid, next):
+			if not is_walkable(grid, next_position):
 				continue
 
-			visited[key] = true
+			visited[next_position] = true
+
 			queue.append({
-				"pos": next,
-				"dist": dist + 1
+				"position": next_position,
+				"distance": distance + 1
 			})
 
 	return {
-		"pos": best_pos,
-		"dist": best_dist
+		"position": farthest_position,
+		"distance": farthest_distance
 	}
-
-
-func _key(pos: Vector2i) -> String:
-	return "%d_%d" % [pos.x, pos.y]
