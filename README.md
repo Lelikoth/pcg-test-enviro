@@ -37,6 +37,18 @@ The environment supports both:
 
 ---
 
+## Example Results
+
+| Random Walk | Perlin Noise | Cellular Automata |
+|---|---|---|
+| ![Random Walk](docs/images/random_walk.png) | ![Perlin Noise](docs/images/perlin_noise.png) | ![Cellular Automata](docs/images/cellular_automata.png) |
+
+| ProcGenHybrid | ModuleWFC |
+|---|---|
+| ![ProcGenHybrid](docs/images/procgen_hybrid.png) | ![ModuleWFC](docs/images/module_wfc.png) |
+
+---
+
 # Features
 
 The testing environment provides:
