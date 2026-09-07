@@ -1,3 +1,10 @@
-# Godot 4+ specific ignores
+# Godot
 .godot/
 /android/
+
+# IDE
+.idea/
+.vscode/
+
+# Generated output
+output/
